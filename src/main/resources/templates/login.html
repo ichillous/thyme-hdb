@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'Log in'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section>
+    <!-- modal injected directly -->
+    <div id="auth-modal"
+         th:insert="~{fragments/auth :: login(
+             next=${next},
+             nextTemplate=${nextTemplate},
+             afterEventId=${afterEventId},
+             contact=${contact},
+             error=${error}
+         )}"></div>
+</section>
+</html>

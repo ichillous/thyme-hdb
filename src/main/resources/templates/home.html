@@ -1,0 +1,25 @@
+<!-- templates/home.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'Home'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <h2 class="muted">Cities</h2>
+    <div class="card stack center" th:if="${#lists.isEmpty(cities)}">
+        <p class="muted">No cities yet. Host the first community event to put your city on the map.</p>
+        <a class="btn" th:href="@{/login(next='/signup')}">Create an event</a>
+        <small class="muted tiny">You’ll be guided through login, then sign up as an organization.</small>
+    </div>
+    <div class="chip-list" th:if="${!#lists.isEmpty(cities)}">
+        <a th:each="c : ${cities}"
+           class="chip"
+           th:href="${param.actorUserId != null}
+                    ? @{/home/cities/{city}(city=${c.city},region=${c.region},actorUserId=${param.actorUserId})}
+                    : @{/home/cities/{city}(city=${c.city},region=${c.region})}">
+            <span th:text="${c.city}">City</span>
+            <small th:text="${c.region}">ST</small>
+            <span class="badge" th:text="${c.eventCount}">0</span>
+        </a>
+    </div>
+</section>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'Events in ' + city}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <div class="row between">
+        <h2>
+            <span th:text="${city}">City</span>
+            <small class="muted" th:text="${region}">ST</small>
+        </h2>
+
+        <form class="row" method="get" th:action="@{/home/cities/{city}(city=${city})}">
+            <input type="hidden" name="region" th:value="${region}"/>
+            <input type="hidden" name="actorUserId" th:value="${actorUserId}" th:if="${actorUserId != null}"/>
+            <input type="search" name="q" placeholder="Search title or venue" th:value="${q}" />
+            <select name="date">
+                <option th:value="ALL" th:selected="${date.name()=='ALL'}">All dates</option>
+                <option th:value="WEEK" th:selected="${date.name()=='WEEK'}">This week</option>
+                <option th:value="MONTH" th:selected="${date.name()=='MONTH'}">This month</option>
+            </select>
+            <select name="sort">
+                <option th:value="NEWEST" th:selected="${sort.name()=='NEWEST'}">Newest first</option>
+                <option th:value="SOONEST" th:selected="${sort.name()=='SOONEST'}">Soonest first</option>
+            </select>
+            <button class="btn" type="submit">Apply</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="list">
+            <article class="item" th:each="e : ${page.content}">
+                <div class="item-main">
+                    <h4 th:text="${e.title}">Title</h4>
+                    <p class="muted" th:text="${e.description}">Desc</p>
+                    <div class="muted tiny" th:if="${e.ownerOrgId != null}">
+                        <a th:href="@{'/org/' + ${e.ownerOrgId}(actorUserId=${actorUserId})}">View organizer</a>
+                    </div>
+
+                    <div class="row">
+                        <a class="btn" th:href="@{'/events/' + ${e.eventId}(actorUserId=${actorUserId})}">View details</a>
+
+                        <!-- Heart button target (no liked/count passed; defaults inside fragment) -->
+                        <span th:id="'heart-' + ${e.eventId}"
+                              th:with="liked=${actorUserId != null ? !#lists.isEmpty(e.likedBy.?[userId == actorUserId]) : false},
+                                       count=${e.likedBy != null ? e.likedBy.size() : 0}"
+                              th:insert="~{fragments/event_heart :: button(
+                                  eventId=${e.eventId},
+                                  actorUserId=${actorUserId},
+                                  liked=${liked},
+                                  count=${count}
+                              )}">
+                        </span>
+                    </div>
+                </div>
+
+                <div class="item-meta">
+                    <div th:text="${e.venueName}">Venue</div>
+                    <div th:text="${e.addressLine}">Addr</div>
+                    <div><span th:text="${e.city}">City</span>, <span th:text="${e.region}">ST</span></div>
+                    <div class="time">
+                        <span th:text="${#temporals.format(e.startAt,'MMM d, yyyy HH:mm z')}">start</span> →
+                        <span th:text="${#temporals.format(e.endAt,'MMM d, yyyy HH:mm z')}">end</span>
+                    </div>
+                </div>
+            </article>
+            <div class="empty" th:if="${page.content.isEmpty()}">No events match your filters.</div>
+        </div>
+
+        <div class="pager row between" th:if="${page.totalPages > 1}">
+            <a class="btn" th:if="${!page.first}"
+               th:href="@{/home/cities/{city}(city=${city},region=${region},q=${q},date=${date},sort=${sort},page=${page.number-1},actorUserId=${actorUserId})}">Prev</a>
+
+            <span class="muted">
+                Page <span th:text="${page.number + 1}">1</span> / <span th:text="${page.totalPages}">1</span>
+            </span>
+
+            <a class="btn" th:if="${!page.last}"
+               th:href="@{/home/cities/{city}(city=${city},region=${region},q=${q},date=${date},sort=${sort},page=${page.number+1},actorUserId=${actorUserId})}">Next</a>
+        </div>
+    </div>
+</section>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Only required params in signature -->
+<span th:fragment="button (eventId, actorUserId, liked, count)">
+    <!-- Not logged in → link to login -->
+    <span th:if="${actorUserId == null}">
+      <button class="btn ghost"
+              type="button"
+              th:hx-get="@{/auth/login/form}"
+              hx-target="body"
+              hx-swap="beforeend"
+              hx-indicator="#hx-indicator"
+              th:hx-vals="|{'nextTemplate':'/ui/events/${eventId}/heart?actorUserId=__USER__','afterEventId':'${eventId}'}|">
+        ♡ Like
+      </button>
+    </span>
+
+    <!-- Logged in → HTMX toggle -->
+    <span th:if="${actorUserId != null}">
+      <button class="btn"
+              th:hx-post="@{'/ui/events/' + ${eventId} + '/heart'(actorUserId=${actorUserId})}"
+              th:hx-target="${'#heart-' + eventId}"
+              hx-swap="outerHTML"
+              hx-indicator="#hx-indicator">
+        <span th:text="${liked != null and liked} ? '♥ Liked' : '♡ Like'">♡ Like</span>
+        <span class="badge" th:text="${count != null ? count : 0}">0</span>
+      </button>
+    </span>
+  </span>
+</body>
+</html>

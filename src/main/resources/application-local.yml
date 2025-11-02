@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:husna;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: none         # use schema.sql/data.sql (safer with our String PK)
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Spring SQL init so schema.sql & data.sql run automatically
+spring.sql.init.mode: always
+
+# springdoc (Swagger UI)
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html   # UI at http://localhost:8080/swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace

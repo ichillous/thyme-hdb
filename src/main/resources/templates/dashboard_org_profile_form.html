@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'Edit Profile'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <h2>Edit organization profile</h2>
+    <p class="muted">Update public details, services, and donation link.</p>
+
+    <div class="alert error" th:if="${error != null}" th:text="${error}">Error</div>
+
+    <form class="stack" method="post"
+          th:action="@{'/dashboard/org/profile/edit'(actorUserId=${actorUserId})}">
+        <div class="grid two">
+            <label>Display name
+                <input type="text" name="displayName" th:value="${form.displayName}" maxlength="160" required/>
+            </label>
+            <label>Website
+                <input type="url" name="website" th:value="${form.website}" maxlength="300"/>
+            </label>
+        </div>
+        <label>Bio
+            <textarea name="bio" rows="4" maxlength="4000" th:text="${form.bio}"></textarea>
+        </label>
+
+        <div class="grid two">
+            <label>Contact email
+                <input type="email" name="contactEmail" th:value="${form.contactEmail}" maxlength="200"/>
+            </label>
+            <label>Contact phone
+                <input type="tel" name="contactPhone" th:value="${form.contactPhone}" maxlength="40"/>
+            </label>
+        </div>
+
+        <div class="grid two">
+            <label>Logo URL
+                <input type="url" name="logoUrl" th:value="${form.logoUrl}" maxlength="500"/>
+            </label>
+            <label>Banner URL
+                <input type="url" name="bannerUrl" th:value="${form.bannerUrl}" maxlength="500"/>
+            </label>
+        </div>
+
+        <fieldset class="stack">
+            <legend>Location</legend>
+            <label>Street
+                <input type="text" name="street" th:value="${form.street}" maxlength="300"/>
+            </label>
+            <div class="grid three">
+                <label>City
+                    <input type="text" name="city" th:value="${form.city}" maxlength="120"/>
+                </label>
+                <label>Region
+                    <input type="text" name="region" th:value="${form.region}" maxlength="120"/>
+                </label>
+                <label>Postal code
+                    <input type="text" name="postalCode" th:value="${form.postalCode}" maxlength="40"/>
+                </label>
+            </div>
+        </fieldset>
+
+        <div class="grid two">
+            <label>Organization type
+                <select name="orgType">
+                    <option th:each="type : ${orgTypes}"
+                            th:value="${type.name()}"
+                            th:text="${type.name()}"
+                            th:selected="${type.name() == form.orgType}">Type</option>
+                </select>
+            </label>
+            <label>Services offered
+                <div class="checkbox-list">
+                    <label th:each="service : ${services}" class="row">
+                        <input type="checkbox" name="services"
+                               th:value="${service.name()}"
+                               th:checked="${form.services != null and form.services.contains(service.name())}"/>
+                        <span th:text="${service.name()}">Service</span>
+                    </label>
+                </div>
+            </label>
+        </div>
+
+        <label>Programs offered
+            <textarea name="programsOffered" rows="3" maxlength="4000" th:text="${form.programsOffered}"></textarea>
+        </label>
+        <label>Classes offered
+            <textarea name="classesOffered" rows="3" maxlength="4000" th:text="${form.classesOffered}"></textarea>
+        </label>
+
+        <fieldset class="stack">
+            <legend>Donations</legend>
+            <label class="row">
+                <input type="checkbox" name="donationEnabled" th:checked="${form.donationEnabled}"/>
+                <span>Enable donations</span>
+            </label>
+            <div class="grid two">
+                <label>Provider
+                    <input type="text" name="donationProvider" th:value="${form.donationProvider}" maxlength="80"/>
+                </label>
+                <label>Donation URL
+                    <input type="url" name="donationUrl" th:value="${form.donationUrl}" maxlength="500"/>
+                </label>
+            </div>
+        </fieldset>
+
+        <button class="btn" type="submit">Save profile</button>
+    </form>
+
+    <a class="link" th:href="@{'/dashboard/org'(actorUserId=${actorUserId})}">← Back to dashboard</a>
+</section>
+</html>

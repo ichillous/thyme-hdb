@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'My Saved Events'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <div class="row between align-center">
+        <div>
+            <h2>Saved Events</h2>
+            <p class="muted" th:text="${profile.displayName}">User</p>
+        </div>
+        <div class="tabs">
+            <a class="tab"
+               th:classappend="${tab == 'upcoming'} ? ' active'"
+               th:href="@{/saved(actorUserId=${actorUserId}, tab='upcoming')}">Upcoming</a>
+            <a class="tab"
+               th:classappend="${tab == 'past'} ? ' active'"
+               th:href="@{/saved(actorUserId=${actorUserId}, tab='past')}">Past</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="list" th:if="${!page.content.isEmpty()}">
+            <article class="item" th:each="e : ${page.content}">
+                <div class="item-main">
+                    <h4 th:text="${e.title}">Title</h4>
+                    <p class="muted" th:text="${e.description}">Desc</p>
+                    <div class="muted tiny" th:if="${e.ownerOrgId != null}">
+                        <a th:href="@{'/org/' + ${e.ownerOrgId}(actorUserId=${actorUserId})}">View organizer</a>
+                    </div>
+                </div>
+
+                <div class="item-meta">
+                    <div th:text="${e.venueName}">Venue</div>
+                    <div th:text="${e.addressLine}">Addr</div>
+                    <div>
+                        <span th:text="${e.city}">City</span>,
+                        <span th:text="${e.region}">ST</span>
+                    </div>
+                    <div class="time">
+                        <span th:text="${#temporals.format(e.startAt,'MMM d, yyyy HH:mm z')}">start</span>
+                        →
+                        <span th:text="${#temporals.format(e.endAt,'MMM d, yyyy HH:mm z')}">end</span>
+                    </div>
+                </div>
+
+                <div class="item-actions">
+                    <a class="btn" th:href="@{'/events/' + ${e.eventId}(actorUserId=${actorUserId})}">View details</a>
+                    <span th:id="'heart-' + ${e.eventId}"
+                          th:insert="~{fragments/event_heart :: button(
+                              eventId=${e.eventId},
+                              actorUserId=${actorUserId},
+                              liked=${true},
+                              count=${likeCounts[e.eventId] ?: 0}
+                          )}"></span>
+                </div>
+            </article>
+        </div>
+
+        <div class="empty" th:if="${page.content.isEmpty()}">
+            <p th:if="${tab == 'upcoming'}">No upcoming saved events yet. Heart an event to see it here.</p>
+            <p th:if="${tab == 'past'}">No past saved events yet.</p>
+        </div>
+
+        <div class="pager row between" th:if="${page.totalPages > 1}">
+            <a class="btn"
+               th:if="${!page.first}"
+               th:href="@{/saved(actorUserId=${actorUserId}, tab=${tab}, page=${page.number-1})}">Prev</a>
+
+            <span class="muted">Page <span th:text="${page.number + 1}">1</span> / <span th:text="${page.totalPages}">1</span></span>
+
+            <a class="btn"
+               th:if="${!page.last}"
+               th:href="@{/saved(actorUserId=${actorUserId}, tab=${tab}, page=${page.number+1})}">Next</a>
+        </div>
+    </div>
+</section>
+</html>

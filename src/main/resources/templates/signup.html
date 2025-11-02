@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'Sign up'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section>
+    <div id="auth-modal"
+         th:insert="~{fragments/auth :: signup(
+             next=${next},
+             nextTemplate=${nextTemplate},
+             afterEventId=${afterEventId},
+             error=${error}
+         )}"></div>
+</section>
+</html>

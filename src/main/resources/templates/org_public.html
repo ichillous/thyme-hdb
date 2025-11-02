@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${profile.displayName ?: 'Organization'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <div class="card stack">
+        <div class="row gap-lg">
+            <img th:if="${profile.logoUrl != null}" th:src="${profile.logoUrl}" alt="Logo" class="logo"/>
+            <div>
+                <h1 th:text="${profile.displayName}">Organization</h1>
+                <p class="muted" th:text="${profile.bio}">Bio</p>
+                <div class="row gap-sm muted small">
+                    <span th:text="${profile.city}">City</span>
+                    <span th:text="${profile.region}">Region</span>
+                    <span th:text="${profile.orgType}">Org type</span>
+                </div>
+                <div class="row gap-sm muted small">
+                    <a th:if="${profile.website != null}" th:href="${profile.website}" target="_blank" rel="noopener">Website</a>
+                    <span th:if="${profile.contactEmail != null}" th:text="${profile.contactEmail}"></span>
+                    <span th:if="${profile.contactPhone != null}" th:text="${profile.contactPhone}"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="muted" th:if="${profile.street != null || profile.city != null}">
+            <span th:text="${profile.street}">Street</span>
+            <div>
+                <span th:text="${profile.city}">City</span>,
+                <span th:text="${profile.region}">Region</span>
+                <span th:text="${profile.postalCode}">Postal</span>
+            </div>
+            <a class="link small" target="_blank" rel="noopener"
+               th:href="@{|https://www.google.com/maps/search/?api=1&query=${#strings.defaultString(profile.displayName,'')} ${#strings.defaultString(profile.street,'')} ${#strings.defaultString(profile.city,'')} ${#strings.defaultString(profile.region,'')} ${#strings.defaultString(profile.postalCode,'')}|}">Open in Google Maps</a>
+        </div>
+
+        <div th:if="${profile.isDonationEnabled() and profile.donationUrl != null}" class="alert info">
+            <strong>Support this organization:</strong>
+            <a th:href="${profile.donationUrl}" target="_blank" rel="noopener" th:text="${profile.donationProvider ?: 'Donate'}">Donate</a>
+        </div>
+    </div>
+
+    <div class="card stack" th:if="${profile.services != null and !profile.services.isEmpty()}">
+        <h3>Services</h3>
+        <ul>
+            <li th:each="service : ${profile.services}" th:text="${service}">Service</li>
+        </ul>
+    </div>
+
+    <div class="card stack" th:if="${profile.programsOffered != null}">
+        <h3>Programs</h3>
+        <p th:text="${profile.programsOffered}">Programs</p>
+    </div>
+
+    <div class="card stack" th:if="${profile.classesOffered != null}">
+        <h3>Classes</h3>
+        <p th:text="${profile.classesOffered}">Classes</p>
+    </div>
+
+    <div class="card stack" th:if="${profile.prayerTimesMode.name() == 'MANUAL_WEEKLY' && !week.isEmpty()}">
+        <h3>Daily prayer times</h3>
+        <table class="tbl">
+            <thead>
+            <tr>
+                <th>Day</th>
+                <th>Fajr</th>
+                <th>Dhuhr</th>
+                <th>Asr</th>
+                <th>Maghrib</th>
+                <th>Isha</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${week}">
+                <td th:text="${#lists.list('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')[row.dayOfWeek - 1]}">Day</td>
+                <td th:text="${row.fajr}">--</td>
+                <td th:text="${row.dhuhr}">--</td>
+                <td th:text="${row.asr}">--</td>
+                <td th:text="${row.maghrib}">--</td>
+                <td th:text="${row.isha}">--</td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${!jummah.isEmpty()}">
+            <h4>Jummah</h4>
+            <ul>
+                <li th:each="jt : ${jummah}">
+                    <strong th:text="${jt.startTime}">12:00</strong>
+                    <span th:text="${jt.notes}">Notes</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="row between align-center">
+        <h3>Events</h3>
+        <div class="tabs">
+            <a class="tab"
+               th:classappend="${tab == 'upcoming'} ? ' active'"
+               th:href="@{'/org/' + ${orgUserId}(tab='upcoming', page=${0}, actorUserId=${param.actorUserId})}">Upcoming</a>
+            <a class="tab"
+               th:classappend="${tab == 'past'} ? ' active'"
+               th:href="@{'/org/' + ${orgUserId}(tab='past', page=${0}, actorUserId=${param.actorUserId})}">Past</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="list" th:if="${!page.content.isEmpty()}">
+            <article class="item" th:each="e : ${page.content}">
+                <div class="item-main">
+                    <h4 th:text="${e.title}">Title</h4>
+                    <p class="muted" th:text="${e.description}">Desc</p>
+                </div>
+                <div class="item-meta">
+                    <div th:text="${e.venueName}">Venue</div>
+                    <div th:text="${e.addressLine}">Addr</div>
+                    <div><span th:text="${e.city}">City</span>, <span th:text="${e.region}">Region</span></div>
+                    <div class="time">
+                        <span th:text="${#temporals.format(e.startAt,'MMM d, yyyy HH:mm z')}">start</span>
+                        →
+                        <span th:text="${#temporals.format(e.endAt,'MMM d, yyyy HH:mm z')}">end</span>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <a class="btn" th:href="@{'/events/' + ${e.eventId}(actorUserId=${param.actorUserId})}">View details</a>
+                    <span th:id="'heart-' + ${e.eventId}"
+                          th:insert="~{fragments/event_heart :: button(
+                              eventId=${e.eventId},
+                              actorUserId=${param.actorUserId},
+                              liked=${likedIds.contains(e.eventId)},
+                              count=${likeCounts[e.eventId] ?: 0}
+                          )}"></span>
+                </div>
+            </article>
+        </div>
+        <div class="empty" th:if="${page.content.isEmpty()}">
+            <p th:text="${tab == 'upcoming' ? 'No upcoming events.' : 'No past events yet.'}">No events.</p>
+        </div>
+        <div class="pager row between" th:if="${page.totalPages > 1}">
+            <a class="btn" th:if="${!page.first}"
+               th:href="@{'/org/' + ${orgUserId}(tab=${tab}, page=${page.number-1}, actorUserId=${param.actorUserId})}">Prev</a>
+            <span class="muted">Page <span th:text="${page.number + 1}">1</span> / <span th:text="${page.totalPages}">1</span></span>
+            <a class="btn" th:if="${!page.last}"
+               th:href="@{'/org/' + ${orgUserId}(tab=${tab}, page=${page.number+1}, actorUserId=${param.actorUserId})}">Next</a>
+        </div>
+    </div>
+</section>
+</html>

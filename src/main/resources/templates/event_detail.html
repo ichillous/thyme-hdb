@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${e.title}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <div class="card">
+        <h2 th:text="${e.title}">Title</h2>
+        <div class="muted">
+            <span th:text="${#temporals.format(e.startAt,'EEE, MMM d yyyy HH:mm z')}">start</span> →
+            <span th:text="${#temporals.format(e.endAt,'EEE, MMM d yyyy HH:mm z')}">end</span>
+        </div>
+        <div class="muted">
+            <span th:text="${e.venueName}">Venue</span> —
+            <span th:text="${e.addressLine}">Addr</span>,
+            <span th:text="${e.city}">City</span>, <span th:text="${e.region}">ST</span>
+        </div>
+        <div class="muted tiny">
+            <a target="_blank" rel="noopener"
+               th:href="@{|https://www.google.com/maps/search/?api=1&query=${#strings.defaultString(e.venueName,'')} ${#strings.defaultString(e.addressLine,'')} ${#strings.defaultString(e.city,'')} ${#strings.defaultString(e.region,'')} ${#strings.defaultString(e.postalCode,'')}|}">
+                Open in Google Maps
+            </a>
+        </div>
+        <div class="muted" th:if="${orgProfile != null}">
+            Organized by
+            <a th:href="@{'/org/' + ${orgProfile.userId}}"
+               th:text="${orgProfile.displayName}">Organizer</a>
+        </div>
+        <p th:text="${e.description}">Desc</p>
+
+        <div th:id="'heart-' + ${e.eventId}"
+             th:with="count=${likeCount},
+                      liked=${actorUserId != null ? !#lists.isEmpty(e.likedBy.?[userId == actorUserId]) : false}"
+             th:insert="~{fragments/event_heart :: button(
+                 eventId=${e.eventId},
+                 actorUserId=${actorUserId},
+                 liked=${liked},
+                 count=${count}
+             )}">
+        </div>
+    </div>
+</section>
+</html>

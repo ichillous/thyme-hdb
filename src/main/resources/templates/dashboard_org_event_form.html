@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${mode == 'edit'} ? 'Edit Event' : 'Create Event'"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <h2 th:text="${mode == 'edit'} ? 'Edit event' : 'Create event'">Create event</h2>
+    <p class="muted">Fill in details, then choose Publish or Save draft.</p>
+
+    <div class="alert error" th:if="${error != null}" th:text="${error}">Error</div>
+
+    <form class="stack"
+          th:action="${mode == 'edit'} ? @{'/dashboard/org/events/' + ${eventId} + '/edit'(actorUserId=${actorUserId})} : @{'/dashboard/org/events/new'(actorUserId=${actorUserId})}"
+          method="post">
+        <label>Title
+            <input type="text" name="title" th:value="${form.title}" required maxlength="160"/>
+        </label>
+        <label>Description
+            <textarea name="description" rows="4" maxlength="4000" th:text="${form.description}"></textarea>
+        </label>
+        <div class="grid two">
+            <label>Venue name
+                <input type="text" name="venueName" th:value="${form.venueName}" maxlength="200"/>
+            </label>
+            <label>Timezone (IANA, e.g. America/New_York)
+                <input type="text" name="timezone" th:value="${form.timezone}" required maxlength="60"/>
+            </label>
+        </div>
+        <label>Address line
+            <input type="text" name="addressLine" th:value="${form.addressLine}" maxlength="300"/>
+        </label>
+        <div class="grid three">
+            <label>City
+                <input type="text" name="city" th:value="${form.city}" maxlength="120"/>
+            </label>
+            <label>Region
+                <input type="text" name="region" th:value="${form.region}" maxlength="120"/>
+            </label>
+            <label>Postal code
+                <input type="text" name="postalCode" th:value="${form.postalCode}" maxlength="40"/>
+            </label>
+        </div>
+        <div class="grid two">
+            <label>Start
+                <input type="datetime-local" name="startDateTime" th:value="${form.startDateTime}" required/>
+            </label>
+            <label>End
+                <input type="datetime-local" name="endDateTime" th:value="${form.endDateTime}" required/>
+            </label>
+        </div>
+
+        <div class="row gap-sm">
+            <button class="btn" type="submit" name="action" value="publish">Publish</button>
+            <button class="btn ghost" type="submit" name="action" value="draft">Save draft</button>
+            <button class="btn ghost" th:if="${mode == 'edit'}" type="submit" name="action" value="save">Save changes</button>
+        </div>
+        <p class="muted tiny" th:if="${mode == 'edit'}">Current state: <strong th:text="${currentPublished} ? 'Published' : 'Draft'"></strong></p>
+    </form>
+
+    <form th:if="${mode == 'edit'}"
+          th:action="@{'/dashboard/org/events/' + ${eventId} + '/delete'(actorUserId=${actorUserId})}"
+          method="post"
+          onsubmit="return confirm('Delete this event?')" class="stack">
+        <button class="btn danger" type="submit">Delete event</button>
+    </form>
+
+    <a class="link" th:href="@{'/dashboard/org'(actorUserId=${actorUserId})}">← Back to dashboard</a>
+</section>
+</html>

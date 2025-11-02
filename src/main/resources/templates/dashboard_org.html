@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Summary cards -->
+<section th:fragment="summary">
+    <div class="cards">
+        <div class="card kpi"><div class="k">Total</div><div class="v" th:text="${s.totalEvents}">0</div></div>
+        <div class="card kpi"><div class="k">Published</div><div class="v" th:text="${s.publishedEvents}">0</div></div>
+        <div class="card kpi"><div class="k">Drafts</div><div class="v" th:text="${s.draftEvents}">0</div></div>
+        <div class="card kpi"><div class="k">Upcoming</div><div class="v" th:text="${s.upcomingEvents}">0</div></div>
+        <div class="card kpi"><div class="k">Past</div><div class="v" th:text="${s.pastEvents}">0</div></div>
+        <div class="card kpi"><div class="k">Likes</div><div class="v" th:text="${s.totalLikes}">0</div></div>
+    </div>
+    <div class="muted small">
+        Profile: <span th:text="${s.city}">City</span>, <span th:text="${s.region}">ST</span> ·
+        Address <span th:text="${s.hasAddress} ? '✓' : '—'"></span> ·
+        Donation <span th:text="${s.hasDonationSetup} ? '✓' : '—'"></span> ·
+        Branding <span th:text="${s.hasBranding} ? '✓' : '—'"></span> ·
+        Prayer updated: <span th:text="${s.prayerTimesLastUpdated != null ? #temporals.format(s.prayerTimesLastUpdated, 'MMM d, yyyy') : '—'}">—</span>
+    </div>
+</section>
+
+<!-- Events table -->
+<section th:fragment="events">
+    <table class="tbl">
+        <thead>
+        <tr>
+            <th>Title</th>
+            <th>When</th>
+            <th>Published</th>
+            <th>Likes</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${rows.content}">
+            <td th:text="${r.event.title}">Title</td>
+            <td>
+                <span th:text="${#temporals.format(r.event.startAt, 'MMM d, yyyy HH:mm')}">start</span>
+                →
+                <span th:text="${#temporals.format(r.event.endAt, 'MMM d, yyyy HH:mm')}">end</span>
+            </td>
+            <td th:text="${r.event.published} ? 'Yes' : 'No'">Yes</td>
+            <td th:text="${r.likes}">0</td>
+            <td>
+                <a class="link" th:href="@{'/dashboard/org/events/' + ${r.event.eventId} + '/edit'(actorUserId=${actorUserId})}">Edit</a>
+            </td>
+        </tr>
+        <tr th:if="${rows.content.isEmpty()}">
+            <td colspan="4" class="muted">No events yet.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="pager row between">
+        <button class="btn"
+                th:disabled="${rows.first}"
+                hx-get=""
+                th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, status=${status}, published=${published}, page=${rows.number - 1}, size=${rows.size})}"
+                hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Prev</button>
+
+        <span class="muted">Page <span th:text="${rows.number + 1}">1</span> / <span th:text="${rows.totalPages}">1</span></span>
+
+        <button class="btn"
+                th:disabled="${rows.last}"
+                hx-get=""
+                th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, status=${status}, published=${published}, page=${rows.number + 1}, size=${rows.size})}"
+                hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Next</button>
+    </div>
+</section>
+
+</body>
+</html>

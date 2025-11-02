@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:with="title=${'Prayer Schedule'}"
+      th:replace="~{base :: layout(~{::section})}">
+<section class="stack">
+    <h2>Prayer schedule</h2>
+    <p class="muted">Choose mode and supply manual times when enabled. Leave a field blank to omit that entry.</p>
+
+    <div class="alert error" th:if="${error != null}" th:text="${error}">Error</div>
+
+    <form class="stack" method="post"
+          th:action="@{'/dashboard/org/prayer-schedule'(actorUserId=${actorUserId})}">
+        <label>Mode
+            <select name="mode">
+                <option th:each="m : ${modes}"
+                        th:value="${m.name()}"
+                        th:text="${m.name()}"
+                        th:selected="${m.name() == form.mode}">Mode</option>
+            </select>
+        </label>
+
+        <div class="card" th:if="${form.mode == 'MANUAL_WEEKLY'}">
+            <table class="tbl">
+                <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Fajr</th>
+                    <th>Dhuhr</th>
+                    <th>Asr</th>
+                    <th>Maghrib</th>
+                    <th>Isha</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row,iter : ${form.week}">
+                    <td>
+                        <span th:text="${#lists.list('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')[iter.index]}">Day</span>
+                        <input type="hidden" th:name="${'week[' + iter.index + '].dayOfWeek'}" th:value="${row.dayOfWeek}"/>
+                    </td>
+                    <td><input type="time" th:name="${'week[' + iter.index + '].fajr'}" th:value="${row.fajr}"/></td>
+                    <td><input type="time" th:name="${'week[' + iter.index + '].dhuhr'}" th:value="${row.dhuhr}"/></td>
+                    <td><input type="time" th:name="${'week[' + iter.index + '].asr'}" th:value="${row.asr}"/></td>
+                    <td><input type="time" th:name="${'week[' + iter.index + '].maghrib'}" th:value="${row.maghrib}"/></td>
+                    <td><input type="time" th:name="${'week[' + iter.index + '].isha'}" th:value="${row.isha}"/></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <h3>Jummah times</h3>
+            <div class="stack">
+                <div class="grid two" th:each="row,iter : ${form.jummah}">
+                    <label>Start time
+                        <input type="time" th:name="${'jummah[' + iter.index + '].startTime'}" th:value="${row.startTime}"/>
+                    </label>
+                    <label>Notes
+                        <input type="text" th:name="${'jummah[' + iter.index + '].notes'}" th:value="${row.notes}" maxlength="120"/>
+                    </label>
+                </div>
+                <p class="muted tiny">Leave rows blank to remove them. Up to three Jummah entries are supported.</p>
+            </div>
+        </div>
+
+        <button class="btn" type="submit">Save schedule</button>
+    </form>
+
+    <a class="link" th:href="@{'/dashboard/org'(actorUserId=${actorUserId})}">← Back to dashboard</a>
+</section>
+</html>

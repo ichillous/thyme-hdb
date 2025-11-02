@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content)">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title th:text="${title} ?: 'Husna'">Husna</title>
+
+    <!-- ✅ this is what actually loads your CSS -->
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body class="app dark">
+<header class="nav">
+    <a class="brand" th:if="${param.actorUserId == null}" th:href="@{/}">Husna</a>
+    <a class="brand" th:if="${param.actorUserId != null}"
+       th:href="@{/(actorUserId=${param.actorUserId})}">Husna</a>
+    <nav class="links">
+        <a th:if="${param.actorUserId == null}" th:href="@{/home}">Home</a>
+        <a th:if="${param.actorUserId != null}"
+           th:href="@{/home(actorUserId=${param.actorUserId})}">Home</a>
+        <a th:href="@{/login}">Log in</a>
+        <a th:href="@{/signup}">Sign up</a>
+        <a th:if="${param.actorUserId != null}"
+           th:href="@{'/saved'(actorUserId=${param.actorUserId})}">Saved</a>
+        <a th:if="${param.actorUserId != null}"
+           th:href="@{'/dashboard/org'(actorUserId=${param.actorUserId})}">Org Dashboard</a>
+    </nav>
+
+</header>
+
+<main id="content" class="container" th:insert="${content}">
+    Loading…
+</main>
+
+<footer class="footer">
+    <span>&copy; <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> Husna</span>
+</footer>
+
+<div id="hx-indicator" class="indicator" aria-hidden="true">…</div>
+</body>
+</html>

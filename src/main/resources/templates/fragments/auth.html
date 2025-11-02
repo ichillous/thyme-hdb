@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ======= Login (contact -> OTP) ======= -->
+<div th:fragment="login (next, nextTemplate, afterEventId, contact, error)">
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Log in</h3>
+                <a class="close" th:href="@{/home}">×</a>
+            </div>
+
+            <div class="alert error" th:if="${error != null}"
+                 th:text="${error}">Error</div>
+
+            <form class="stack"
+                  hx-post="/auth/otp/request"
+                  hx-target="#auth-modal"
+                  hx-swap="outerHTML"
+                  hx-indicator="#hx-indicator">
+                <input type="hidden" name="next" th:value="${next}"/>
+                <input type="hidden" name="nextTemplate" th:value="${nextTemplate}"/>
+                <input type="hidden" name="afterEventId" th:value="${afterEventId}"/>
+                <label> Email or phone
+                    <input name="contact"
+                           type="text"
+                           placeholder="you@example.com or 555-123-4567"
+                           th:value="${contact}"
+                           required/>
+                </label>
+                <button class="btn wide" type="submit">Send code</button>
+                <div class="muted tiny">MVP uses a mock OTP; code will be shown here for dev.</div>
+            </form>
+
+            <div class="muted tiny">
+                New here?
+                <a class="link"
+                   th:href="@{/signup(next=${next}, nextTemplate=${nextTemplate}, afterEventId=${afterEventId})}">Create an account</a>.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= Verify OTP ======= -->
+<div th:fragment="verify (contact, devCode, next, nextTemplate, afterEventId, error)">
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Enter code</h3>
+                <a class="close" th:href="@{/home}">×</a>
+            </div>
+
+            <div class="muted tiny" th:if="${devCode != null}">
+                Dev code: <code th:text="${devCode}">000000</code>
+            </div>
+
+            <div class="alert error" th:if="${error != null}"
+                 th:text="${error}">Error</div>
+
+            <form class="stack"
+                  hx-post="/auth/otp/verify"
+                  hx-target="#auth-modal"
+                  hx-swap="outerHTML"
+                  hx-indicator="#hx-indicator">
+                <input type="hidden" name="contact" th:value="${contact}"/>
+                <input type="hidden" name="next" th:value="${next}"/>
+                <input type="hidden" name="nextTemplate" th:value="${nextTemplate}"/>
+                <input type="hidden" name="afterEventId" th:value="${afterEventId}"/>
+                <label> 6-digit code
+                    <input name="code" pattern="[0-9]{6}" inputmode="numeric" maxlength="6" required/>
+                </label>
+                <button class="btn wide" type="submit">Verify</button>
+            </form>
+            <div class="muted tiny">
+                Didn’t get a code?
+                <a class="link"
+                   hx-post="/auth/otp/request"
+                   hx-target="#auth-modal"
+                   hx-swap="outerHTML"
+                   hx-indicator="#hx-indicator"
+                   th:hx-vals="|{'contact':'${contact}','next':'${next}','nextTemplate':'${nextTemplate}','afterEventId':'${afterEventId}'}|">Resend</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= Login success ======= -->
+<div th:fragment="login_success (user, next, afterEventId)">
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Welcome</h3>
+                <a class="close" th:href="@{/home}">×</a>
+            </div>
+            <p>You are logged in as <strong th:text="${user.username()}" >user</strong>.</p>
+            <div class="row">
+                <!-- Dev helper: jump to dashboard using actorUserId -->
+                <a class="btn" th:href="@{'/dashboard/org'(actorUserId=${user.userId})}">Open Org Dashboard</a>
+                <a class="btn ghost" th:href="@{/home}">Close</a>
+                <a class="btn" th:if="${next != null}" th:href="${next}">Continue</a>
+            </div>
+            <div class="muted tiny">Dev note: real auth comes later; this uses mock OTP + actorUserId.</div>
+            <div th:if="${next != null and afterEventId != null}"
+                 th:hx-post="${next}"
+                 th:hx-target="${'#heart-' + afterEventId}"
+                 hx-swap="outerHTML"
+                 hx-trigger="load delay:200ms"
+                 hx-indicator="#hx-indicator"
+                 hx-on::afterRequest="document.getElementById('auth-modal')?.remove();">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= Signup ======= -->
+<div th:fragment="signup (next, nextTemplate, afterEventId, error)">
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Sign up</h3>
+                <a class="close" th:href="@{/home}">×</a>
+            </div>
+
+            <div class="alert error" th:if="${error != null}"
+                 th:text="${error}">Error</div>
+
+            <form class="stack"
+                  hx-post="/auth/signup"
+                  hx-target="#auth-modal"
+                  hx-swap="outerHTML"
+                  hx-indicator="#hx-indicator">
+                <input type="hidden" name="next" th:value="${next}"/>
+                <input type="hidden" name="nextTemplate" th:value="${nextTemplate}"/>
+                <input type="hidden" name="afterEventId" th:value="${afterEventId}"/>
+                <label>Email (or leave blank if using phone)
+                    <input name="email" type="email" placeholder="you@example.com"/>
+                </label>
+                <label>Phone (digits only)
+                    <input name="phone" type="tel" placeholder="5551234567"/>
+                </label>
+                <label>Username (optional)
+                    <input name="username" type="text" placeholder="Display name"/>
+                </label>
+                <label class="row">
+                    <input type="checkbox" name="org"/> Create as organization
+                </label>
+                <button class="btn wide" type="submit">Create account</button>
+            </form>
+
+            <div class="muted tiny">You may provide either email or phone (at least one).</div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= Signup success (offer OTP) ======= -->
+<div th:fragment="signup_success (contact, user, next, nextTemplate, afterEventId)">
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Account created</h3>
+                <a class="close" th:href="@{/home}">×</a>
+            </div>
+
+            <p class="muted">Next, verify with a one-time code.</p>
+
+            <form class="row"
+                  hx-post="/auth/otp/request"
+                  hx-target="#auth-modal"
+                  hx-swap="outerHTML"
+                  hx-indicator="#hx-indicator">
+                <input type="hidden" name="contact" th:value="${contact}"/>
+                <input type="hidden" name="next" th:value="${next}"/>
+                <input type="hidden" name="nextTemplate" th:value="${nextTemplate}"/>
+                <input type="hidden" name="afterEventId" th:value="${afterEventId}"/>
+                <button class="btn" type="submit">Send code</button>
+                <a class="btn ghost" th:href="@{/home}">Skip</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
