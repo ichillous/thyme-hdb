@@ -9,34 +9,35 @@
             <p class="muted">Manage events, profile, and prayer schedule.</p>
         </div>
         <div class="row gap-sm">
-            <a class="btn" th:href="@{'/dashboard/org/events/new'(actorUserId=${actorUserId})}">Create event</a>
-            <a class="btn ghost" th:href="@{'/dashboard/org/profile/edit'(actorUserId=${actorUserId})}">Profile</a>
-            <a class="btn ghost" th:href="@{'/dashboard/org/prayer-schedule'(actorUserId=${actorUserId})}">Prayer schedule</a>
+            <a class="btn" th:href="@{/dashboard/org/events/new}">Create event</a>
+            <a class="btn ghost" th:href="@{/dashboard/org/profile/edit}">Profile</a>
+            <a class="btn ghost" th:if="${summary.mosque}" th:href="@{/dashboard/org/prayer-schedule}">Prayer schedule</a>
         </div>
     </div>
 
+    <div class="alert error" th:if="${error != null}" th:text="${error}">Error</div>
     <div class="alert success" th:if="${success != null}" th:text="${success}">Saved.</div>
 
     <div class="nudges" th:if="${summary != null}">
         <div class="card nudge" th:if="${summary.totalEvents() == 0}">
             <h4>No events yet</h4>
             <p class="muted">Publish your first event so the community can discover your organization.</p>
-            <a class="btn" th:href="@{'/dashboard/org/events/new'(actorUserId=${actorUserId})}">Create event</a>
+            <a class="btn" th:href="@{/dashboard/org/events/new}">Create event</a>
         </div>
         <div class="card nudge" th:if="${!summary.hasBranding()}">
             <h4>Add branding</h4>
             <p class="muted">Upload a logo or banner to personalize your profile.</p>
-            <a class="btn ghost" th:href="@{'/dashboard/org/profile/edit'(actorUserId=${actorUserId})}">Update profile</a>
+            <a class="btn ghost" th:href="@{/dashboard/org/profile/edit}">Update profile</a>
         </div>
         <div class="card nudge" th:if="${!summary.hasAddress()}">
             <h4>Add location details</h4>
             <p class="muted">Share your address so attendees know where to find you.</p>
-            <a class="btn ghost" th:href="@{'/dashboard/org/profile/edit'(actorUserId=${actorUserId})}">Update profile</a>
+            <a class="btn ghost" th:href="@{/dashboard/org/profile/edit}">Update profile</a>
         </div>
         <div class="card nudge" th:if="${!summary.hasDonationSetup()}">
             <h4>Enable donations</h4>
             <p class="muted">Add a donation link to support your programs.</p>
-            <a class="btn ghost" th:href="@{'/dashboard/org/profile/edit'(actorUserId=${actorUserId})}">Set donations</a>
+            <a class="btn ghost" th:href="@{/dashboard/org/profile/edit}">Set donations</a>
         </div>
     </div>
 
@@ -48,22 +49,22 @@
             <h3>Events</h3>
             <div class="row gap-sm">
                 <a class="btn ghost"
-                   th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, status='upcoming')}"
+                   th:hx-get="@{'/dashboard/org/events'(status='upcoming')}"
                    hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Upcoming</a>
                 <a class="btn ghost"
-                   th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, status='past')}"
+                   th:hx-get="@{'/dashboard/org/events'(status='past')}"
                    hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Past</a>
                 <a class="btn ghost"
-                   th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, published=true)}"
+                   th:hx-get="@{'/dashboard/org/events'(published=true)}"
                    hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Published</a>
                 <a class="btn ghost"
-                   th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, published=false)}"
+                   th:hx-get="@{'/dashboard/org/events'(published=false)}"
                    hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Drafts</a>
             </div>
         </div>
 
         <section id="eventsTable"
-                 th:replace="~{dashboard_org :: events(actorUserId=${actorUserId}, rows=${rows}, status=${status}, published=${published})}"></section>
+                 th:replace="~{dashboard_org :: events(rows=${rows}, status=${status}, published=${published})}"></section>
     </section>
 </section>
 </html>

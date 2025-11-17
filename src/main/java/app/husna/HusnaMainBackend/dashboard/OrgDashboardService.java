@@ -1,5 +1,7 @@
 package app.husna.HusnaMainBackend.dashboard;
 
+import app.husna.HusnaMainBackend.constants.OrgType;
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.event.Event;
 import app.husna.HusnaMainBackend.event.EventRepository;
 import app.husna.HusnaMainBackend.profile.Profile;
@@ -7,6 +9,8 @@ import app.husna.HusnaMainBackend.profile.ProfileService;
 import app.husna.HusnaMainBackend.user.UserAccount;
 import app.husna.HusnaMainBackend.user.UserService;
 import org.springframework.data.domain.*;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -45,49 +49,67 @@ public class OrgDashboardService {
                         EventRepository.EventLikeCount::getLikeCount));
         long totalLikes = all.stream().mapToLong(e -> likeCounts.getOrDefault(e.getEventId(), 0L)).sum();
 
-        boolean hasAddress = nonBlank(profile.getCity()) || nonBlank(profile.getStreet());
+        boolean hasAddress = nonBlank(profile.getCity()) || nonBlank(profile.getAddressLine1());
         boolean hasDonation = profile.isDonationEnabled() && nonBlank(profile.getDonationUrl());
         boolean hasBranding = nonBlank(profile.getLogoUrl()) || nonBlank(profile.getBannerUrl());
 
+        boolean isMosque = profile.getOrgType() == OrgType.MOSQUE;
+
         return new Summary(
                 total, published, drafts, upcoming, past, totalLikes,
-                profile.getCity(), profile.getRegion(),
+                profile.getCity(), profile.getStateProvince(),
                 hasAddress, hasDonation, hasBranding,
-                profile.getPrayerTimesLastUpdated()
+                profile.getPrayerTimesLastUpdated(),
+                isMosque
         );
     }
 
     public Page<EventRow> listEvents(String actorUserId, String status, Boolean publishedFilter, Pageable pageable) {
         UserAccount actor = users.getById(actorUserId);
-
-        Page<Event> page = events.findByOwnerOrgId(actor.getUserId(), pageable);
-
         Instant now = Instant.now();
-        List<Event> filtered = page.getContent().stream().filter(e -> {
-            boolean statusOk = switch (status == null ? "all" : status.toLowerCase()) {
-                case "upcoming" -> e.getStartAt().isAfter(now);
-                case "past" -> !e.getStartAt().isAfter(now);
-                default -> true;
-            };
-            boolean pubOk = (publishedFilter == null) || (e.isPublished() == publishedFilter);
-            return statusOk && pubOk;
-        }).sorted((a, b) -> {
-            if (status != null && status.equalsIgnoreCase("past")) {
-                return b.getStartAt().compareTo(a.getStartAt());
+
+        Specification<Event> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("ownerOrgId"), actor.getUserId()));
+
+            if (status != null) {
+                String normalized = status.toLowerCase(Locale.ROOT);
+                switch (normalized) {
+                    case "upcoming" -> predicates.add(cb.greaterThan(root.get("startAt"), now));
+                    case "past" -> predicates.add(cb.lessThanOrEqualTo(root.get("startAt"), now));
+                    default -> {
+                    }
+                }
             }
-            return a.getStartAt().compareTo(b.getStartAt());
-        }).toList();
+
+            if (publishedFilter != null) {
+                predicates.add(cb.equal(root.get("published"), publishedFilter));
+            }
+
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+
+        Pageable sortedPageable = ensureSort(pageable, status);
+        Page<Event> page = events.findAll(spec, sortedPageable);
 
         Map<String, Long> likeCounts = events.countLikesByOrgEvents(actor.getUserId())
                 .stream().collect(Collectors.toMap(EventRepository.EventLikeCount::getEventId,
                         EventRepository.EventLikeCount::getLikeCount));
 
-        List<EventRow> rows = filtered.stream()
+        List<EventRow> rows = page.getContent().stream()
                 .map(e -> new EventRow(e, likeCounts.getOrDefault(e.getEventId(), 0L)))
                 .toList();
 
-        // Keep original paging metadata but return filtered content
-        return new PageImpl<>(rows, pageable, page.getTotalElements());
+        return new PageImpl<>(rows, sortedPageable, page.getTotalElements());
+    }
+
+    private Pageable ensureSort(Pageable pageable, String status) {
+        if (pageable.getSort().isSorted()) {
+            return pageable;
+        }
+        boolean past = status != null && status.equalsIgnoreCase("past");
+        Sort sort = past ? Sort.by(Sort.Order.desc("startAt")) : Sort.by(Sort.Order.asc("startAt"));
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
     }
 
     private boolean nonBlank(String s) { return s != null && !s.isBlank(); }
@@ -101,11 +123,12 @@ public class OrgDashboardService {
             long pastEvents,
             long totalLikes,
             String city,
-            String region,
+            StateProvince stateProvince,
             boolean hasAddress,
             boolean hasDonationSetup,
             boolean hasBranding,
-            Instant prayerTimesLastUpdated
+            Instant prayerTimesLastUpdated,
+            boolean mosque
     ) {}
 
     public record EventRow(Event event, long likes) {}

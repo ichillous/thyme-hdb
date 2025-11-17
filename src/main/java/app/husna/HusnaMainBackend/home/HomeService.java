@@ -1,5 +1,6 @@
 package app.husna.HusnaMainBackend.home;
 
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.event.Event;
 import app.husna.HusnaMainBackend.event.EventRepository;
 import org.springframework.data.domain.Page;
@@ -22,17 +23,17 @@ public class HomeService {
     public List<CitySummary> listActiveCities() {
         Instant now = Instant.now();
         return events.listActiveCities(now).stream()
-                .map(c -> new CitySummary(c.getCity(), c.getRegion(), c.getCount()))
+                .map(c -> new CitySummary(c.getCity(), c.getStateProvince(), c.getCount()))
                 .toList();
     }
 
     // All published events in city (optionally upcoming-only)
-    public Page<Event> listCityEvents(String city, String region, boolean upcomingOnly, Pageable pageable) {
+    public Page<Event> listCityEvents(String city, StateProvince state, boolean upcomingOnly, Pageable pageable) {
         Instant now = Instant.now();
-        if (region != null && !region.isBlank()) {
+        if (state != null) {
             return upcomingOnly
-                    ? events.findByPublishedTrueAndCityIgnoreCaseAndRegionIgnoreCaseAndStartAtAfter(city, region, now, pageable)
-                    : events.findByPublishedTrueAndCityIgnoreCaseAndRegionIgnoreCase(city, region, pageable);
+                    ? events.findByPublishedTrueAndCityIgnoreCaseAndStateProvinceAndStartAtAfter(city, state, now, pageable)
+                    : events.findByPublishedTrueAndCityIgnoreCaseAndStateProvince(city, state, pageable);
         } else {
             return upcomingOnly
                     ? events.findByPublishedTrueAndCityIgnoreCaseAndStartAtAfter(city, now, pageable)
@@ -41,5 +42,5 @@ public class HomeService {
     }
 
     // DTO
-    public record CitySummary(String city, String region, long eventCount) {}
+    public record CitySummary(String city, StateProvince stateProvince, long eventCount) {}
 }

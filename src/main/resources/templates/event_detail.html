@@ -1,27 +1,37 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      th:with="title=${e.title}"
+      th:with="title=${e.title}, stateCode=${e.stateProvince != null ? e.stateProvince.name() : null}"
       th:replace="~{base :: layout(~{::section})}">
 <section class="stack">
     <div class="card">
         <h2 th:text="${e.title}">Title</h2>
         <div class="muted">
-            <span th:text="${#temporals.format(e.startAt,'EEE, MMM d yyyy HH:mm z')}">start</span> →
-            <span th:text="${#temporals.format(e.endAt,'EEE, MMM d yyyy HH:mm z')}">end</span>
+            <span th:text="${#temporals.format(e.startAtZoned,'EEE, MMM d yyyy HH:mm z')}">start</span> →
+            <span th:text="${#temporals.format(e.endAtZoned,'EEE, MMM d yyyy HH:mm z')}">end</span>
         </div>
-        <div class="muted">
-            <span th:text="${e.venueName}">Venue</span> —
-            <span th:text="${e.addressLine}">Addr</span>,
-            <span th:text="${e.city}">City</span>, <span th:text="${e.region}">ST</span>
+        <div class="muted" th:with="p=${orgProfile},
+                                     vName=${e.venueName},
+                                     vAddr=${e.addressLine != null ? e.addressLine : (p != null ? p.addressLine1 : null)},
+                                     vCity=${e.city != null ? e.city : (p != null ? p.city : null)},
+                                     vState=${stateCode != null ? stateCode : (p != null && p.stateProvince != null ? p.stateProvince.name() : null)}">
+            <span th:text="${vName != null and !#strings.isEmpty(vName) ? vName : (p != null ? p.displayName : 'Venue')}">Venue</span> —
+            <span th:text="${vAddr != null ? vAddr : '—'}">Addr</span>,
+            <span th:text="${vCity != null ? vCity : '—'}">City</span>, <span th:text="${vState != null ? vState : '—'}">ST</span>
         </div>
         <div class="muted tiny">
             <a target="_blank" rel="noopener"
-               th:href="@{|https://www.google.com/maps/search/?api=1&query=${#strings.defaultString(e.venueName,'')} ${#strings.defaultString(e.addressLine,'')} ${#strings.defaultString(e.city,'')} ${#strings.defaultString(e.region,'')} ${#strings.defaultString(e.postalCode,'')}|}">
+               th:with="p=${orgProfile},
+                         vName=${e.venueName},
+                         vAddr=${e.addressLine != null ? e.addressLine : (p != null ? p.addressLine1 : null)},
+                         vCity=${e.city != null ? e.city : (p != null ? p.city : null)},
+                         vState=${stateCode != null ? stateCode : (p != null && p.stateProvince != null ? p.stateProvince.name() : null)},
+                         vZip=${e.postalCode != null ? e.postalCode : (p != null ? p.postalCode : null)}"
+               th:href="@{|https://www.google.com/maps/search/?api=1&query=${#strings.defaultString(vName,'')} ${#strings.defaultString(vAddr,'')} ${#strings.defaultString(vCity,'')} ${#strings.defaultString(vState,'')} ${#strings.defaultString(vZip,'')}|}">
                 Open in Google Maps
             </a>
         </div>
         <div class="muted" th:if="${orgProfile != null}">
-            Organized by
+            Event hosted by
             <a th:href="@{'/org/' + ${orgProfile.userId}}"
                th:text="${orgProfile.displayName}">Organizer</a>
         </div>
@@ -29,7 +39,7 @@
 
         <div th:id="'heart-' + ${e.eventId}"
              th:with="count=${likeCount},
-                      liked=${actorUserId != null ? !#lists.isEmpty(e.likedBy.?[userId == actorUserId]) : false}"
+                      liked=${likedByActor}"
              th:insert="~{fragments/event_heart :: button(
                  eventId=${e.eventId},
                  actorUserId=${actorUserId},

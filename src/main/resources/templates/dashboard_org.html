@@ -13,7 +13,7 @@
         <div class="card kpi"><div class="k">Likes</div><div class="v" th:text="${s.totalLikes}">0</div></div>
     </div>
     <div class="muted small">
-        Profile: <span th:text="${s.city}">City</span>, <span th:text="${s.region}">ST</span> ·
+        Profile: <span th:text="${s.city}">City</span>, <span th:text="${s.stateProvince != null ? s.stateProvince.name() : '—'}">ST</span> ·
         Address <span th:text="${s.hasAddress} ? '✓' : '—'"></span> ·
         Donation <span th:text="${s.hasDonationSetup} ? '✓' : '—'"></span> ·
         Branding <span th:text="${s.hasBranding} ? '✓' : '—'"></span> ·
@@ -22,7 +22,7 @@
 </section>
 
 <!-- Events table -->
-<section th:fragment="events">
+<section th:fragment="events" id="eventsTable" data-skeleton="table">
     <table class="tbl">
         <thead>
         <tr>
@@ -37,18 +37,25 @@
         <tr th:each="r : ${rows.content}">
             <td th:text="${r.event.title}">Title</td>
             <td>
-                <span th:text="${#temporals.format(r.event.startAt, 'MMM d, yyyy HH:mm')}">start</span>
+                <span th:text="${#temporals.format(r.event.startAtZoned, 'MMM d, yyyy HH:mm z')}">start</span>
                 →
-                <span th:text="${#temporals.format(r.event.endAt, 'MMM d, yyyy HH:mm')}">end</span>
+                <span th:text="${#temporals.format(r.event.endAtZoned, 'MMM d, yyyy HH:mm z')}">end</span>
             </td>
             <td th:text="${r.event.published} ? 'Yes' : 'No'">Yes</td>
             <td th:text="${r.likes}">0</td>
             <td>
-                <a class="link" th:href="@{'/dashboard/org/events/' + ${r.event.eventId} + '/edit'(actorUserId=${actorUserId})}">Edit</a>
+                <a class="link" th:href="@{'/dashboard/org/events/' + ${r.event.eventId} + '/edit'}">Edit</a>
             </td>
         </tr>
         <tr th:if="${rows.content.isEmpty()}">
-            <td colspan="4" class="muted">No events yet.</td>
+            <td colspan="5">
+                <div class="stack center small">
+                    <p class="muted">
+                        <span th:text="${status == 'past' ? 'No past events to show.' : (status == 'upcoming' ? 'No upcoming events scheduled yet.' : 'No events match this filter.')}">No events yet.</span>
+                    </p>
+                    <a class="btn tiny" th:href="@{/dashboard/org/events/new}">Create an event</a>
+                </div>
+            </td>
         </tr>
         </tbody>
     </table>
@@ -57,7 +64,7 @@
         <button class="btn"
                 th:disabled="${rows.first}"
                 hx-get=""
-                th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, status=${status}, published=${published}, page=${rows.number - 1}, size=${rows.size})}"
+                th:hx-get="@{'/dashboard/org/events'(status=${status}, published=${published}, page=${rows.number - 1}, size=${rows.size})}"
                 hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Prev</button>
 
         <span class="muted">Page <span th:text="${rows.number + 1}">1</span> / <span th:text="${rows.totalPages}">1</span></span>
@@ -65,7 +72,7 @@
         <button class="btn"
                 th:disabled="${rows.last}"
                 hx-get=""
-                th:hx-get="@{'/dashboard/org/events'(actorUserId=${actorUserId}, status=${status}, published=${published}, page=${rows.number + 1}, size=${rows.size})}"
+                th:hx-get="@{'/dashboard/org/events'(status=${status}, published=${published}, page=${rows.number + 1}, size=${rows.size})}"
                 hx-target="#eventsTable" hx-swap="outerHTML" hx-indicator="#hx-indicator">Next</button>
     </div>
 </section>

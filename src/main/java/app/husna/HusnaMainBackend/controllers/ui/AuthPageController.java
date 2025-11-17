@@ -1,17 +1,27 @@
 package app.husna.HusnaMainBackend.controllers.ui;
 
+import app.husna.HusnaMainBackend.auth.AuthSessionService;
 import app.husna.HusnaMainBackend.user.UserAccount;
 import app.husna.HusnaMainBackend.user.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 
 @Controller
 public class AuthPageController {
 
     private final UserService users;
+    private final AuthSessionService sessions;
 
-    public AuthPageController(UserService users) { this.users = users; }
+    public AuthPageController(UserService users, AuthSessionService sessions) {
+        this.users = users;
+        this.sessions = sessions;
+    }
 
     // Page shells (include the modal immediately)
     @GetMapping("/login")
@@ -105,9 +115,12 @@ public class AuthPageController {
                             @RequestParam(required = false) String next,
                             @RequestParam(required = false) String nextTemplate,
                             @RequestParam(required = false) String afterEventId,
-                            Model model) {
+                            Model model,
+                            HttpServletRequest request,
+                            HttpServletResponse response) {
         try {
             UserAccount ua = users.verifyMockOtp(contact, code);
+            startSession(ua, request, response);
             model.addAttribute("user", ua);
             model.addAttribute("next", resolveNext(next, nextTemplate, ua));
             model.addAttribute("afterEventId", afterEventId);
@@ -162,6 +175,9 @@ public class AuthPageController {
             case "email_taken" -> "That email is already in use.";
             case "phone_taken" -> "That phone number is already in use.";
             case "username_taken" -> "That username is already in use.";
+            case "otp_expired" -> "That code expired. Request a new one.";
+            case "otp_rate_limited" -> "You have requested too many codes. Please wait a moment before trying again.";
+            case "otp_attempts_exceeded" -> "Too many incorrect attempts. Request a new code.";
             default -> "Something went wrong. Please try again.";
         };
     }
@@ -174,5 +190,17 @@ public class AuthPageController {
             return nextTemplate.replace("__USER__", ua.getUserId());
         }
         return null;
+    }
+
+    private void startSession(UserAccount ua, HttpServletRequest request, HttpServletResponse response) {
+        String token = sessions.createSession(ua.getUserId());
+        ResponseCookie cookie = ResponseCookie.from(AuthSessionService.SESSION_COOKIE_NAME, token)
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(sessions.sessionTtl())
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

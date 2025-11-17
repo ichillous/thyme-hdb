@@ -21,7 +21,7 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain h2ConsoleChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/**", "/h2-console/**", "/localhost/**")
+                .securityMatcher("/h2-console/**", "/localhost/**")
                 .authorizeHttpRequests(a -> a.anyRequest().permitAll())
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/**","/localhost/**", "/h2-console/**"))
                 // allow frames for same-origin so the console works

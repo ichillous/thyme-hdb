@@ -4,11 +4,11 @@
 
 <!-- ======= Login (contact -> OTP) ======= -->
 <div th:fragment="login (next, nextTemplate, afterEventId, contact, error)">
-    <div class="modal-overlay">
-        <div class="modal">
+    <div id="auth-modal" class="modal-overlay" role="presentation" data-modal-overlay data-skeleton="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-title" tabindex="-1" data-modal-dialog>
             <div class="modal-header">
-                <h3>Log in</h3>
-                <a class="close" th:href="@{/home}">×</a>
+                <h3 id="login-title">Log in</h3>
+                <button type="button" class="close" data-modal-close aria-label="Close">×</button>
             </div>
 
             <div class="alert error" th:if="${error != null}"
@@ -44,11 +44,11 @@
 
 <!-- ======= Verify OTP ======= -->
 <div th:fragment="verify (contact, devCode, next, nextTemplate, afterEventId, error)">
-    <div id="auth-modal" class="modal-overlay">
-        <div class="modal">
+    <div id="auth-modal" class="modal-overlay" role="presentation" data-modal-overlay data-skeleton="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="otp-title" tabindex="-1" data-modal-dialog>
             <div class="modal-header">
-                <h3>Enter code</h3>
-                <a class="close" th:href="@{/home}">×</a>
+                <h3 id="otp-title">Enter code</h3>
+                <button type="button" class="close" data-modal-close aria-label="Close">×</button>
             </div>
 
             <div class="muted tiny" th:if="${devCode != null}">
@@ -87,20 +87,21 @@
 
 <!-- ======= Login success ======= -->
 <div th:fragment="login_success (user, next, afterEventId)">
-    <div id="auth-modal" class="modal-overlay">
-        <div class="modal">
+    <div id="auth-modal" class="modal-overlay" role="presentation" data-modal-overlay data-skeleton="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-success-title" tabindex="-1" data-modal-dialog>
             <div class="modal-header">
-                <h3>Welcome</h3>
-                <a class="close" th:href="@{/home}">×</a>
+                <h3 id="login-success-title">Welcome</h3>
+                <button type="button" class="close" data-modal-close aria-label="Close">×</button>
             </div>
             <p>You are logged in as <strong th:text="${user.username()}" >user</strong>.</p>
             <div class="row">
-                <!-- Dev helper: jump to dashboard using actorUserId -->
-                <a class="btn" th:href="@{'/dashboard/org'(actorUserId=${user.userId})}">Open Org Dashboard</a>
-                <a class="btn ghost" th:href="@{/home}">Close</a>
+                <a class="btn" th:href="@{/saved}">Go to Saved events</a>
+                <a class="btn" th:if="${user.roles != null and user.roles.contains(T(app.husna.HusnaMainBackend.constants.RoleName).ORG_ADMIN)}"
+                   th:href="@{/dashboard/org}">Open Org Dashboard</a>
+                <button class="btn ghost" type="button" data-modal-close>Close</button>
                 <a class="btn" th:if="${next != null}" th:href="${next}">Continue</a>
             </div>
-            <div class="muted tiny">Dev note: real auth comes later; this uses mock OTP + actorUserId.</div>
+            <div class="muted tiny">Dev note: real auth comes later; this uses mock OTP + an in-memory session.</div>
             <div th:if="${next != null and afterEventId != null}"
                  th:hx-post="${next}"
                  th:hx-target="${'#heart-' + afterEventId}"
@@ -115,11 +116,11 @@
 
 <!-- ======= Signup ======= -->
 <div th:fragment="signup (next, nextTemplate, afterEventId, error)">
-    <div class="modal-overlay">
-        <div class="modal">
+    <div id="auth-modal" class="modal-overlay" role="presentation" data-modal-overlay data-skeleton="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="signup-title" tabindex="-1" data-modal-dialog>
             <div class="modal-header">
-                <h3>Sign up</h3>
-                <a class="close" th:href="@{/home}">×</a>
+                <h3 id="signup-title">Sign up</h3>
+                <button type="button" class="close" data-modal-close aria-label="Close">×</button>
             </div>
 
             <div class="alert error" th:if="${error != null}"
@@ -155,11 +156,11 @@
 
 <!-- ======= Signup success (offer OTP) ======= -->
 <div th:fragment="signup_success (contact, user, next, nextTemplate, afterEventId)">
-    <div id="auth-modal" class="modal-overlay">
-        <div class="modal">
+    <div id="auth-modal" class="modal-overlay" role="presentation" data-modal-overlay data-skeleton="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="signup-success-title" tabindex="-1" data-modal-dialog>
             <div class="modal-header">
-                <h3>Account created</h3>
-                <a class="close" th:href="@{/home}">×</a>
+                <h3 id="signup-success-title">Account created</h3>
+                <button type="button" class="close" data-modal-close aria-label="Close">×</button>
             </div>
 
             <p class="muted">Next, verify with a one-time code.</p>

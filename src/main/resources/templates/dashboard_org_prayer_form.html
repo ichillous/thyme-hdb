@@ -1,25 +1,16 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      th:with="title=${'Prayer Schedule'}"
+      th:with="title='Prayer Schedule'"
       th:replace="~{base :: layout(~{::section})}">
 <section class="stack">
     <h2>Prayer schedule</h2>
-    <p class="muted">Choose mode and supply manual times when enabled. Leave a field blank to omit that entry.</p>
+    <p class="muted">Enter this week’s times once (applies to Saturday through Friday). Leave a field blank to clear that prayer.</p>
 
     <div class="alert error" th:if="${error != null}" th:text="${error}">Error</div>
 
     <form class="stack" method="post"
-          th:action="@{'/dashboard/org/prayer-schedule'(actorUserId=${actorUserId})}">
-        <label>Mode
-            <select name="mode">
-                <option th:each="m : ${modes}"
-                        th:value="${m.name()}"
-                        th:text="${m.name()}"
-                        th:selected="${m.name() == form.mode}">Mode</option>
-            </select>
-        </label>
-
-        <div class="card" th:if="${form.mode == 'MANUAL_WEEKLY'}">
+          th:action="@{'/dashboard/org/prayer-schedule'}">
+        <div class="card">
             <table class="tbl">
                 <thead>
                 <tr>
@@ -34,8 +25,7 @@
                 <tbody>
                 <tr th:each="row,iter : ${form.week}">
                     <td>
-                        <span th:text="${#lists.list('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')[iter.index]}">Day</span>
-                        <input type="hidden" th:name="${'week[' + iter.index + '].dayOfWeek'}" th:value="${row.dayOfWeek}"/>
+                        <span th:text="${row.label}">All days (Sat-Fri)</span>
                     </td>
                     <td><input type="time" th:name="${'week[' + iter.index + '].fajr'}" th:value="${row.fajr}"/></td>
                     <td><input type="time" th:name="${'week[' + iter.index + '].dhuhr'}" th:value="${row.dhuhr}"/></td>
@@ -63,6 +53,6 @@
         <button class="btn" type="submit">Save schedule</button>
     </form>
 
-    <a class="link" th:href="@{'/dashboard/org'(actorUserId=${actorUserId})}">← Back to dashboard</a>
+    <a class="link" th:href="@{/dashboard/org}">← Back to dashboard</a>
 </section>
 </html>

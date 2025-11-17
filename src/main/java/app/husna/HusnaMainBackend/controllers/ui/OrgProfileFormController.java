@@ -1,9 +1,12 @@
 package app.husna.HusnaMainBackend.controllers.ui;
 
+import app.husna.HusnaMainBackend.auth.ActorContext;
 import app.husna.HusnaMainBackend.constants.OrgType;
 import app.husna.HusnaMainBackend.constants.Services;
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.profile.Profile;
 import app.husna.HusnaMainBackend.profile.ProfileService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -17,33 +20,38 @@ import java.util.stream.Collectors;
 public class OrgProfileFormController {
 
     private final ProfileService profiles;
+    private final ObjectProvider<ActorContext> actorContext;
 
-    public OrgProfileFormController(ProfileService profiles) {
+    public OrgProfileFormController(ProfileService profiles, ObjectProvider<ActorContext> actorContext) {
         this.profiles = profiles;
+        this.actorContext = actorContext;
     }
 
     @GetMapping("/edit")
-    public String editProfile(@RequestParam String actorUserId, Model model) {
+    public String editProfile(@RequestParam(required = false) String notice,
+                              Model model) {
+        String actorUserId = actorContext.getObject().requireActorUserId();
         Profile profile = profiles.getMine(actorUserId);
         ProfileForm form = ProfileForm.fromProfile(profile);
-        model.addAttribute("actorUserId", actorUserId);
         model.addAttribute("form", form);
         model.addAttribute("orgTypes", OrgType.values());
         model.addAttribute("services", Services.values());
+        model.addAttribute("states", StateProvince.values());
+        model.addAttribute("notice", notice);
         return "dashboard_org_profile_form";
     }
 
     @PostMapping("/edit")
-    public String updateProfile(@RequestParam String actorUserId,
-                                @ModelAttribute("form") ProfileForm form,
+    public String updateProfile(@ModelAttribute("form") ProfileForm form,
                                 Model model) {
+        String actorUserId = actorContext.getObject().requireActorUserId();
         try {
             profiles.updateMine(actorUserId, form.toUpdateRequest());
-            return "redirect:/dashboard/org?actorUserId=" + actorUserId + "&success=Profile%20updated";
+            return "redirect:/dashboard/org?success=Profile%20updated";
         } catch (Exception ex) {
-            model.addAttribute("actorUserId", actorUserId);
             model.addAttribute("orgTypes", OrgType.values());
             model.addAttribute("services", Services.values());
+            model.addAttribute("states", StateProvince.values());
             model.addAttribute("error", ex.getMessage());
             return "dashboard_org_profile_form";
         }
@@ -57,10 +65,12 @@ public class OrgProfileFormController {
         private String contactPhone;
         private String logoUrl;
         private String bannerUrl;
-        private String street;
+        private String addressLine1;
+        private String addressLine2;
         private String city;
-        private String region;
+        private String stateProvince;
         private String postalCode;
+        private String countryCode;
         private String orgType;
         private Set<String> services;
         private String programsOffered;
@@ -85,10 +95,12 @@ public class OrgProfileFormController {
                     contactPhone,
                     logoUrl,
                     bannerUrl,
-                    street,
+                    addressLine1,
+                    addressLine2,
                     city,
-                    region,
+                    stateProvince != null && !stateProvince.isBlank() ? StateProvince.valueOf(stateProvince) : null,
                     postalCode,
+                    countryCode,
                     type,
                     serviceEnums,
                     programsOffered,
@@ -109,10 +121,12 @@ public class OrgProfileFormController {
             form.setContactPhone(profile.getContactPhone());
             form.setLogoUrl(profile.getLogoUrl());
             form.setBannerUrl(profile.getBannerUrl());
-            form.setStreet(profile.getStreet());
+            form.setAddressLine1(profile.getAddressLine1());
+            form.setAddressLine2(profile.getAddressLine2());
             form.setCity(profile.getCity());
-            form.setRegion(profile.getRegion());
+            form.setStateProvince(profile.getStateProvince() != null ? profile.getStateProvince().name() : null);
             form.setPostalCode(profile.getPostalCode());
+            form.setCountryCode(profile.getCountryCode());
             form.setOrgType(profile.getOrgType() != null ? profile.getOrgType().name() : OrgType.OTHER.name());
             if (profile.getServices() != null) {
                 form.setServices(profile.getServices().stream().map(Services::name).collect(Collectors.toSet()));
@@ -141,14 +155,18 @@ public class OrgProfileFormController {
         public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
         public String getBannerUrl() { return bannerUrl; }
         public void setBannerUrl(String bannerUrl) { this.bannerUrl = bannerUrl; }
-        public String getStreet() { return street; }
-        public void setStreet(String street) { this.street = street; }
+        public String getAddressLine1() { return addressLine1; }
+        public void setAddressLine1(String addressLine1) { this.addressLine1 = addressLine1; }
+        public String getAddressLine2() { return addressLine2; }
+        public void setAddressLine2(String addressLine2) { this.addressLine2 = addressLine2; }
         public String getCity() { return city; }
         public void setCity(String city) { this.city = city; }
-        public String getRegion() { return region; }
-        public void setRegion(String region) { this.region = region; }
+        public String getStateProvince() { return stateProvince; }
+        public void setStateProvince(String stateProvince) { this.stateProvince = stateProvince; }
         public String getPostalCode() { return postalCode; }
         public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
+        public String getCountryCode() { return countryCode; }
+        public void setCountryCode(String countryCode) { this.countryCode = countryCode; }
         public String getOrgType() { return orgType; }
         public void setOrgType(String orgType) { this.orgType = orgType; }
         public Set<String> getServices() { return services; }

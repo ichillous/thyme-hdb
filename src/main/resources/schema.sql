@@ -31,7 +31,7 @@ create table if not exists EVENT (
                                      venue_name      varchar(200),
                                      address_line    varchar(300),
                                      city            varchar(120),
-                                     region          varchar(120),
+                                     state_province  varchar(2),
                                      postal_code     varchar(40),
                                      tz              varchar(60),
                                      start_at        timestamp    not null,
@@ -76,10 +76,12 @@ create table if not exists PROFILE (
                                        logo_url             varchar(500),
                                        banner_url           varchar(500),
 
-                                       street               varchar(300),
+                                       address_line1        varchar(300),
+                                       address_line2        varchar(300),
                                        city                 varchar(120),
-                                       region               varchar(120),
+                                       state_province       varchar(2),
                                        postal_code          varchar(40),
+                                       country_code         varchar(2)  not null default 'US',
 
                                        org_type             varchar(40)  not null default 'NONE',
 
@@ -137,6 +139,6 @@ create table if not exists PROFILE_JUMMAH_TIME (
 create index if not exists idx_jummah_profile on PROFILE_JUMMAH_TIME(profile_id);
 
 
--- Helpful indexes for city/region filtering
+-- Helpful indexes for city/state filtering
 create index if not exists idx_event_city on EVENT(city);
-create index if not exists idx_event_city_region on EVENT(city, region);
+create index if not exists idx_event_city_state on EVENT(city, state_province);

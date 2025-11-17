@@ -11,10 +11,10 @@
         <div class="tabs">
             <a class="tab"
                th:classappend="${tab == 'upcoming'} ? ' active'"
-               th:href="@{/saved(actorUserId=${actorUserId}, tab='upcoming')}">Upcoming</a>
+               th:href="@{/saved(tab='upcoming')}">Upcoming</a>
             <a class="tab"
                th:classappend="${tab == 'past'} ? ' active'"
-               th:href="@{/saved(actorUserId=${actorUserId}, tab='past')}">Past</a>
+               th:href="@{/saved(tab='past')}">Past</a>
         </div>
     </div>
 
@@ -23,28 +23,32 @@
             <article class="item" th:each="e : ${page.content}">
                 <div class="item-main">
                     <h4 th:text="${e.title}">Title</h4>
-                    <p class="muted" th:text="${e.description}">Desc</p>
+                    <p class="muted clamp-3" th:text="${e.description}">Desc</p>
                     <div class="muted tiny" th:if="${e.ownerOrgId != null}">
-                        <a th:href="@{'/org/' + ${e.ownerOrgId}(actorUserId=${actorUserId})}">View organizer</a>
+                        <a th:href="@{'/org/' + ${e.ownerOrgId}}">View organizer</a>
                     </div>
                 </div>
 
-                <div class="item-meta">
-                    <div th:text="${e.venueName}">Venue</div>
-                    <div th:text="${e.addressLine}">Addr</div>
+                <div class="item-meta" th:with="p=${ownerProfiles != null ? ownerProfiles[e.ownerOrgId] : null},
+                                            vName=${e.venueName},
+                                            vAddr=${e.addressLine != null ? e.addressLine : (p != null ? p.addressLine1 : null)},
+                                            vCity=${e.city != null ? e.city : (p != null ? p.city : null)},
+                                            vState=${e.stateProvince != null ? e.stateProvince.name() : (p != null && p.stateProvince != null ? p.stateProvince.name() : null)}">
+                    <div th:text="${vName != null and !#strings.isEmpty(vName) ? vName : (p != null ? p.displayName : 'Venue')}">Venue</div>
+                    <div th:text="${vAddr != null ? vAddr : '—'}">Addr</div>
                     <div>
-                        <span th:text="${e.city}">City</span>,
-                        <span th:text="${e.region}">ST</span>
+                        <span th:text="${vCity != null ? vCity : '—'}">City</span>,
+                        <span th:text="${vState != null ? vState : '—'}">ST</span>
                     </div>
                     <div class="time">
-                        <span th:text="${#temporals.format(e.startAt,'MMM d, yyyy HH:mm z')}">start</span>
+                        <span th:text="${#temporals.format(e.startAtZoned,'MMM d, yyyy HH:mm z')}">start</span>
                         →
-                        <span th:text="${#temporals.format(e.endAt,'MMM d, yyyy HH:mm z')}">end</span>
+                        <span th:text="${#temporals.format(e.endAtZoned,'MMM d, yyyy HH:mm z')}">end</span>
                     </div>
                 </div>
 
                 <div class="item-actions">
-                    <a class="btn" th:href="@{'/events/' + ${e.eventId}(actorUserId=${actorUserId})}">View details</a>
+                    <a class="btn" th:href="@{'/events/' + ${e.eventId}}">View details</a>
                     <span th:id="'heart-' + ${e.eventId}"
                           th:insert="~{fragments/event_heart :: button(
                               eventId=${e.eventId},
@@ -57,20 +61,27 @@
         </div>
 
         <div class="empty" th:if="${page.content.isEmpty()}">
-            <p th:if="${tab == 'upcoming'}">No upcoming saved events yet. Heart an event to see it here.</p>
-            <p th:if="${tab == 'past'}">No past saved events yet.</p>
+            <div th:if="${tab == 'upcoming'}">
+                <p>No upcoming saved events yet.</p>
+                <p class="muted">Browse cities and tap the heart icon to collect events you love.</p>
+                <a class="btn" th:href="@{/home}">Explore cities</a>
+            </div>
+            <div th:if="${tab == 'past'}">
+                <p>No past saved events yet.</p>
+                <p class="muted">As events conclude they’ll move here for easy reference.</p>
+            </div>
         </div>
 
         <div class="pager row between" th:if="${page.totalPages > 1}">
-            <a class="btn"
+           <a class="btn"
                th:if="${!page.first}"
-               th:href="@{/saved(actorUserId=${actorUserId}, tab=${tab}, page=${page.number-1})}">Prev</a>
+               th:href="@{/saved(tab=${tab}, page=${page.number-1})}">Prev</a>
 
             <span class="muted">Page <span th:text="${page.number + 1}">1</span> / <span th:text="${page.totalPages}">1</span></span>
 
-            <a class="btn"
+           <a class="btn"
                th:if="${!page.last}"
-               th:href="@{/saved(actorUserId=${actorUserId}, tab=${tab}, page=${page.number+1})}">Next</a>
+               th:href="@{/saved(tab=${tab}, page=${page.number+1})}">Next</a>
         </div>
     </div>
 </section>

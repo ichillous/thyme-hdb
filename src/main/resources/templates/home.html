@@ -13,11 +13,9 @@
     <div class="chip-list" th:if="${!#lists.isEmpty(cities)}">
         <a th:each="c : ${cities}"
            class="chip"
-           th:href="${param.actorUserId != null}
-                    ? @{/home/cities/{city}(city=${c.city},region=${c.region},actorUserId=${param.actorUserId})}
-                    : @{/home/cities/{city}(city=${c.city},region=${c.region})}">
+           th:href="@{/home/cities/{city}(city=${c.city},state=${c.stateProvince != null ? c.stateProvince.name() : null})}">
             <span th:text="${c.city}">City</span>
-            <small th:text="${c.region}">ST</small>
+            <small th:text="${c.stateProvince != null ? c.stateProvince.name() : '—'}">ST</small>
             <span class="badge" th:text="${c.eventCount}">0</span>
         </a>
     </div>

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,9 +41,14 @@ public class UserService {
 
     private final UserAccountRepository users;
 
-    // In-memory store for mock OTPs: contact -> code
-    private final Map<String, String> pendingOtps = new ConcurrentHashMap<>();
+    // In-memory store for mock OTPs: contact -> entry
+    private final Map<String, OtpEntry> pendingOtps = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
+
+    private static final Duration OTP_TTL = Duration.ofMinutes(5);
+    private static final Duration OTP_REQUEST_WINDOW = Duration.ofMinutes(1);
+    private static final int OTP_MAX_ATTEMPTS = 5;
+    private static final int OTP_MAX_REQUESTS_PER_WINDOW = 3;
 
     public UserService(UserAccountRepository users) {
         this.users = users;
@@ -124,8 +131,16 @@ public class UserService {
         if (lookup.user.isEmpty()) {
             throw new IllegalArgumentException("user_not_found");
         }
+        Instant now = Instant.now();
+        OtpEntry existing = pendingOtps.get(lookup.normalizedContact);
+        if (existing != null && existing.isRateLimited(now)) {
+            throw new IllegalArgumentException("otp_rate_limited");
+        }
         String code = generateSixDigitCode();
-        pendingOtps.put(lookup.normalizedContact, code);
+        OtpEntry entry = (existing == null || existing.isExpired(now))
+                ? OtpEntry.fresh(code, now)
+                : existing.refresh(code, now);
+        pendingOtps.put(lookup.normalizedContact, entry);
         return code;
     }
 
@@ -140,8 +155,17 @@ public class UserService {
     public UserAccount verifyMockOtp(String contact, String code) {
         ContactLookup lookup = resolveAndLookupContact(contact);
         String key = lookup.normalizedContact;
-        String expected = pendingOtps.get(key);
-        if (expected == null || !Objects.equals(expected, code)) {
+        OtpEntry entry = pendingOtps.get(key);
+        Instant now = Instant.now();
+        if (entry == null || entry.isExpired(now)) {
+            pendingOtps.remove(key);
+            throw new IllegalArgumentException("otp_expired");
+        }
+        if (!Objects.equals(entry.code, code)) {
+            if (entry.incrementAttempts() >= OTP_MAX_ATTEMPTS) {
+                pendingOtps.remove(key);
+                throw new IllegalArgumentException("otp_attempts_exceeded");
+            }
             throw new IllegalArgumentException("invalid_otp");
         }
         pendingOtps.remove(key);
@@ -389,6 +413,55 @@ public class UserService {
     private String generateSixDigitCode() {
         int code = random.nextInt(1_000_000);
         return String.format("%06d", code);
+    }
+
+    private static final class OtpEntry {
+        private String code;
+        private Instant createdAt;
+        private Instant firstRequestAt;
+        private int requestCount;
+        private int attempts;
+
+        private OtpEntry(String code, Instant createdAt, Instant firstRequestAt, int requestCount, int attempts) {
+            this.code = code;
+            this.createdAt = createdAt;
+            this.firstRequestAt = firstRequestAt;
+            this.requestCount = requestCount;
+            this.attempts = attempts;
+        }
+
+        static OtpEntry fresh(String code, Instant now) {
+            return new OtpEntry(code, now, now, 1, 0);
+        }
+
+        OtpEntry refresh(String code, Instant now) {
+            if (Duration.between(firstRequestAt, now).compareTo(OTP_REQUEST_WINDOW) > 0) {
+                firstRequestAt = now;
+                requestCount = 0;
+            }
+            requestCount++;
+            this.code = code;
+            this.createdAt = now;
+            this.attempts = 0;
+            return this;
+        }
+
+        boolean isExpired(Instant now) {
+            return createdAt.plus(OTP_TTL).isBefore(now);
+        }
+
+        boolean isRateLimited(Instant now) {
+            if (Duration.between(firstRequestAt, now).compareTo(OTP_REQUEST_WINDOW) > 0) {
+                firstRequestAt = now;
+                requestCount = 0;
+            }
+            return requestCount >= OTP_MAX_REQUESTS_PER_WINDOW;
+        }
+
+        int incrementAttempts() {
+            attempts++;
+            return attempts;
+        }
     }
 
     private ContactLookup resolveAndLookupContact(String rawContact) {

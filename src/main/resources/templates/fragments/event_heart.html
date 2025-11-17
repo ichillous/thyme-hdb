@@ -2,7 +2,10 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <!-- Only required params in signature -->
-<span th:fragment="button (eventId, actorUserId, liked, count)">
+<span th:fragment="button (eventId, actorUserId, liked, count)"
+      th:with="toastMessage=${actorUserId != null} ? ((${liked != null and liked} ? 'Added to Saved events' : 'Removed from Saved events')) : null,
+               toastVariant=${actorUserId != null} ? ((${liked != null and liked} ? 'success' : 'info')) : null"
+      th:attr="data-toast-message=${toastMessage}, data-toast-variant=${toastVariant}">
     <!-- Not logged in → link to login -->
     <span th:if="${actorUserId == null}">
       <button class="btn ghost"
@@ -11,7 +14,7 @@
               hx-target="body"
               hx-swap="beforeend"
               hx-indicator="#hx-indicator"
-              th:hx-vals="|{'nextTemplate':'/ui/events/${eventId}/heart?actorUserId=__USER__','afterEventId':'${eventId}'}|">
+              th:hx-vals="|{'nextTemplate':'/ui/events/${eventId}/heart','afterEventId':'${eventId}'}|">
         ♡ Like
       </button>
     </span>
@@ -19,10 +22,11 @@
     <!-- Logged in → HTMX toggle -->
     <span th:if="${actorUserId != null}">
       <button class="btn"
-              th:hx-post="@{'/ui/events/' + ${eventId} + '/heart'(actorUserId=${actorUserId})}"
+              th:hx-post="@{'/ui/events/' + ${eventId} + '/heart'}"
               th:hx-target="${'#heart-' + eventId}"
               hx-swap="outerHTML"
-              hx-indicator="#hx-indicator">
+              hx-indicator="#hx-indicator"
+              th:attr="aria-pressed=${liked != null and liked}, aria-label=${(liked != null and liked) ? 'Unsave event' : 'Save event'}">
         <span th:text="${liked != null and liked} ? '♥ Liked' : '♡ Like'">♡ Like</span>
         <span class="badge" th:text="${count != null ? count : 0}">0</span>
       </button>

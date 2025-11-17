@@ -3,6 +3,7 @@ package app.husna.HusnaMainBackend.profile;
 import app.husna.HusnaMainBackend.constants.OrgType;
 import app.husna.HusnaMainBackend.constants.PrayerTimesMode;
 import app.husna.HusnaMainBackend.constants.Services;
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.user.UserAccount;
 import jakarta.persistence.*;
 import lombok.*;
@@ -63,17 +64,24 @@ public class Profile {
     private String bannerUrl;
 
     // Address (displayed for orgs)
-    @Column(name = "street", length = 300)
-    private String street;
+    @Column(name = "address_line1", length = 300)
+    private String addressLine1;
+
+    @Column(name = "address_line2", length = 300)
+    private String addressLine2;
 
     @Column(name = "city", length = 120)
     private String city;
 
-    @Column(name = "region", length = 120)
-    private String region;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "state_province", length = 2)
+    private StateProvince stateProvince;
 
     @Column(name = "postal_code", length = 40)
     private String postalCode;
+
+    @Column(name = "country_code", length = 2)
+    private String countryCode;
 
     // Organization flags
     @Enumerated(EnumType.STRING)
@@ -81,7 +89,7 @@ public class Profile {
     private OrgType orgType;
 
     // Services (orgs)
-    @ElementCollection(fetch = FetchType.LAZY)
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "PROFILE_SERVICES", joinColumns = @JoinColumn(name = "profile_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "service_name", nullable = false)

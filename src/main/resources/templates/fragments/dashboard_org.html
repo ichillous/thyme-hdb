@@ -13,7 +13,7 @@
         <div class="card kpi"><div class="k">Likes</div><div class="v" th:text="${s.totalLikes}">0</div></div>
     </div>
     <div class="muted small">
-        Profile: <span th:text="${s.city}">City</span>, <span th:text="${s.region}">ST</span> ·
+        Profile: <span th:text="${s.city}">City</span>, <span th:text="${s.stateProvince != null ? s.stateProvince.name() : '—'}">ST</span> ·
         Address <span th:text="${s.hasAddress} ? '✓' : '—'"></span> ·
         Donation <span th:text="${s.hasDonationSetup} ? '✓' : '—'"></span> ·
         Branding <span th:text="${s.hasBranding} ? '✓' : '—'"></span> ·
@@ -22,7 +22,7 @@
 </section>
 
 <!-- Events table -->
-<section th:fragment="events">
+<section th:fragment="events" id="eventsTable" data-skeleton="table">
     <table class="tbl">
         <thead>
         <tr>
@@ -36,9 +36,9 @@
         <tr th:each="r : ${rows.content}">
             <td th:text="${r.event.title}">Title</td>
             <td>
-                <span th:text="${#temporals.format(r.event.startAt, 'MMM d, yyyy HH:mm')}">start</span>
+                <span th:text="${#temporals.format(r.event.startAtZoned, 'MMM d, yyyy HH:mm z')}">start</span>
                 →
-                <span th:text="${#temporals.format(r.event.endAt, 'MMM d, yyyy HH:mm')}">end</span>
+                <span th:text="${#temporals.format(r.event.endAtZoned, 'MMM d, yyyy HH:mm z')}">end</span>
             </td>
             <td th:text="${r.event.published} ? 'Yes' : 'No'">Yes</td>
             <td th:text="${r.likes}">0</td>

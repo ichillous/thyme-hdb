@@ -1,11 +1,14 @@
 package app.husna.HusnaMainBackend.controllers.ui;
 
+import app.husna.HusnaMainBackend.auth.ActorContext;
 import app.husna.HusnaMainBackend.constants.PrayerTimesMode;
 import app.husna.HusnaMainBackend.profile.Profile;
 import app.husna.HusnaMainBackend.profile.ProfileJummahTime;
 import app.husna.HusnaMainBackend.profile.ProfilePrayerTime;
 import app.husna.HusnaMainBackend.profile.ProfileService;
 import app.husna.HusnaMainBackend.profile.ProfileService.ReplacePrayerSchedule;
+import org.springframework.beans.factory.ObjectProvider;
+import app.husna.HusnaMainBackend.constants.OrgType;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -13,82 +16,107 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/dashboard/org/prayer-schedule")
 public class OrgPrayerScheduleController {
 
     private final ProfileService profiles;
+    private final ObjectProvider<ActorContext> actorContext;
 
-    public OrgPrayerScheduleController(ProfileService profiles) {
+    public OrgPrayerScheduleController(ProfileService profiles, ObjectProvider<ActorContext> actorContext) {
         this.profiles = profiles;
+        this.actorContext = actorContext;
+    }
+
+    private static final List<Integer> DAY_ORDER = List.of(6, 7, 1, 2, 3, 4, 5); // Sat → Fri (ISO 8601 values)
+    private static final String ALL_DAYS_LABEL = "All days (Sat-Fri)";
+
+    private static List<ProfilePrayerTime> orderWeek(List<ProfilePrayerTime> week) {
+        if (week == null || week.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, ProfilePrayerTime> byDay = week.stream()
+                .collect(Collectors.toMap(ProfilePrayerTime::getDayOfWeek, Function.identity()));
+        List<ProfilePrayerTime> ordered = new ArrayList<>();
+        for (int day : DAY_ORDER) {
+            ProfilePrayerTime ptr = byDay.get(day);
+            if (ptr != null) {
+                ordered.add(ptr);
+            }
+        }
+        return ordered;
+    }
+
+    private boolean ensureMosque(Profile profile) {
+        return profile != null && profile.getOrgType() == OrgType.MOSQUE;
     }
 
     @GetMapping
-    public String edit(@RequestParam String actorUserId, Model model) {
+    public String edit(Model model) {
+        String actorUserId = actorContext.getObject().requireActorUserId();
         Profile profile = profiles.getMine(actorUserId);
-        List<ProfilePrayerTime> week = profiles.listPrayerTimes(actorUserId);
+        if (!ensureMosque(profile)) {
+            return "redirect:/dashboard/org?error=Prayer%20schedule%20available%20for%20mosques%20only";
+        }
+        List<ProfilePrayerTime> week = orderWeek(profiles.listPrayerTimes(actorUserId));
         List<ProfileJummahTime> jummah = profiles.listJummahTimes(actorUserId);
         PrayerScheduleForm form = PrayerScheduleForm.from(profile, week, jummah);
-        model.addAttribute("actorUserId", actorUserId);
         model.addAttribute("form", form);
-        model.addAttribute("modes", PrayerTimesMode.values());
         return "dashboard_org_prayer_form";
     }
 
     @PostMapping
-    public String save(@RequestParam String actorUserId,
-                       @ModelAttribute("form") PrayerScheduleForm form,
+    public String save(@ModelAttribute("form") PrayerScheduleForm form,
                        Model model) {
+        String actorUserId = actorContext.getObject().requireActorUserId();
         try {
-            PrayerTimesMode mode = PrayerTimesMode.valueOf(form.getMode());
-            profiles.updateMine(actorUserId, form.toUpdateProfile(mode));
-            if (mode == PrayerTimesMode.MANUAL_WEEKLY) {
-                profiles.replacePrayerSchedule(actorUserId, form.toReplaceRequest());
+            Profile profile = profiles.getMine(actorUserId);
+            if (!ensureMosque(profile)) {
+                return "redirect:/dashboard/org?error=Prayer%20schedule%20available%20for%20mosques%20only";
             }
-            return "redirect:/dashboard/org?actorUserId=" + actorUserId + "&success=Prayer%20schedule%20updated";
+            profiles.updateMine(actorUserId, new ProfileService.UpdateProfile(
+                    null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null,
+                    null, null, null, PrayerTimesMode.MANUAL_WEEKLY,
+                    null, null, null
+            ));
+            profiles.replacePrayerSchedule(actorUserId, form.toReplaceRequest());
+            return "redirect:/dashboard/org?success=Prayer%20schedule%20updated";
         } catch (Exception ex) {
-            model.addAttribute("actorUserId", actorUserId);
-            model.addAttribute("modes", PrayerTimesMode.values());
+            form.ensureWeekRow();
             model.addAttribute("error", ex.getMessage());
             return "dashboard_org_prayer_form";
         }
     }
 
     public static class PrayerScheduleForm {
-        private String mode;
         private List<DayRow> week = new ArrayList<>();
         private List<JummahRow> jummah = new ArrayList<>();
 
         public ReplacePrayerSchedule toReplaceRequest() {
+            DayRow weekRow = ensureWeekRow();
             List<ReplacePrayerSchedule.Day> days = new ArrayList<>();
-            for (DayRow row : week) {
-                if (row.hasTimes()) {
-                    days.add(new ReplacePrayerSchedule.Day(
-                            row.getDayOfWeek(),
-                            parse(row.getFajr()),
-                            parse(row.getDhuhr()),
-                            parse(row.getAsr()),
-                            parse(row.getMaghrib()),
-                            parse(row.getIsha())
-                    ));
+            if (weekRow.hasTimes()) {
+                LocalTime fajr = parse(weekRow.getFajr());
+                LocalTime dhuhr = parse(weekRow.getDhuhr());
+                LocalTime asr = parse(weekRow.getAsr());
+                LocalTime maghrib = parse(weekRow.getMaghrib());
+                LocalTime isha = parse(weekRow.getIsha());
+                for (int day : DAY_ORDER) {
+                    days.add(new ReplacePrayerSchedule.Day(day, fajr, dhuhr, asr, maghrib, isha));
                 }
             }
             List<ReplacePrayerSchedule.Jummah> js = new ArrayList<>();
-            for (JummahRow row : jummah) {
-                if (row.getStartTime() != null && !row.getStartTime().isBlank()) {
-                    js.add(new ReplacePrayerSchedule.Jummah(parse(row.getStartTime()), row.getNotes()));
+            for (JummahRow slot : jummah) {
+                if (slot.getStartTime() != null && !slot.getStartTime().isBlank()) {
+                    js.add(new ReplacePrayerSchedule.Jummah(parse(slot.getStartTime()), slot.getNotes()));
                 }
             }
             return new ReplacePrayerSchedule(days, js);
-        }
-
-        public ProfileService.UpdateProfile toUpdateProfile(PrayerTimesMode mode) {
-            return new ProfileService.UpdateProfile(
-                    null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, null,
-                    null, mode, null, null, null
-            );
         }
 
         private static LocalTime parse(String value) {
@@ -99,31 +127,61 @@ public class OrgPrayerScheduleController {
                                               List<ProfilePrayerTime> week,
                                               List<ProfileJummahTime> jummah) {
             PrayerScheduleForm form = new PrayerScheduleForm();
-            form.setMode(profile.getPrayerTimesMode().name());
-            for (int i = 1; i <= 7; i++) {
-                final int day = i;
-                ProfilePrayerTime ptr = week.stream().filter(p -> p.getDayOfWeek() == day).findFirst().orElse(null);
-                DayRow row = new DayRow();
-                row.setDayOfWeek(i);
-                if (ptr != null) {
-                    row.setFajr(toString(ptr.getFajr()));
-                    row.setDhuhr(toString(ptr.getDhuhr()));
-                    row.setAsr(toString(ptr.getAsr()));
-                    row.setMaghrib(toString(ptr.getMaghrib()));
-                    row.setIsha(toString(ptr.getIsha()));
-                }
-                form.getWeek().add(row);
+            ProfilePrayerTime ptr = firstWithTimes(week);
+            DayRow weekRow = form.ensureWeekRow();
+            if (ptr != null) {
+                weekRow.setFajr(toString(ptr.getFajr()));
+                weekRow.setDhuhr(toString(ptr.getDhuhr()));
+                weekRow.setAsr(toString(ptr.getAsr()));
+                weekRow.setMaghrib(toString(ptr.getMaghrib()));
+                weekRow.setIsha(toString(ptr.getIsha()));
             }
-            for (int i = 0; i < Math.max(3, jummah.size()); i++) {
-                JummahRow row = new JummahRow();
-                if (i < jummah.size()) {
-                    ProfileJummahTime jt = jummah.get(i);
-                    row.setStartTime(toString(jt.getStartTime()));
-                    row.setNotes(jt.getNotes());
+
+            List<ProfileJummahTime> safeJummah = (jummah != null) ? jummah : List.of();
+            for (int i = 0; i < Math.max(3, safeJummah.size()); i++) {
+                JummahRow slot = new JummahRow();
+                if (i < safeJummah.size()) {
+                    ProfileJummahTime jt = safeJummah.get(i);
+                    slot.setStartTime(toString(jt.getStartTime()));
+                    slot.setNotes(jt.getNotes());
                 }
-                form.getJummah().add(row);
+                form.getJummah().add(slot);
             }
             return form;
+        }
+
+        public DayRow ensureWeekRow() {
+            return ensureWeekRowInternal();
+        }
+
+        private DayRow ensureWeekRowInternal() {
+            if (week == null) {
+                week = new ArrayList<>();
+            }
+            if (week.isEmpty()) {
+                DayRow row = new DayRow();
+                row.setLabel(ALL_DAYS_LABEL);
+                week.add(row);
+            } else {
+                week.get(0).setLabel(ALL_DAYS_LABEL);
+            }
+            return week.get(0);
+        }
+
+        private static ProfilePrayerTime firstWithTimes(List<ProfilePrayerTime> week) {
+            if (week == null || week.isEmpty()) {
+                return null;
+            }
+            return week.stream()
+                    .filter(PrayerScheduleForm::hasAnyTimes)
+                    .findFirst()
+                    .orElse(week.get(0));
+        }
+
+        private static boolean hasAnyTimes(ProfilePrayerTime time) {
+            if (time == null) return false;
+            return time.getFajr() != null || time.getDhuhr() != null || time.getAsr() != null
+                    || time.getMaghrib() != null || time.getIsha() != null;
         }
 
         private static String toString(LocalTime time) {
@@ -132,15 +190,13 @@ public class OrgPrayerScheduleController {
 
         // getters and setters
 
-        public String getMode() { return mode; }
-        public void setMode(String mode) { this.mode = mode; }
         public List<DayRow> getWeek() { return week; }
         public void setWeek(List<DayRow> week) { this.week = week; }
         public List<JummahRow> getJummah() { return jummah; }
         public void setJummah(List<JummahRow> jummah) { this.jummah = jummah; }
 
         public static class DayRow {
-            private int dayOfWeek;
+            private String label;
             private String fajr;
             private String dhuhr;
             private String asr;
@@ -160,8 +216,8 @@ public class OrgPrayerScheduleController {
                 return false;
             }
 
-            public int getDayOfWeek() { return dayOfWeek; }
-            public void setDayOfWeek(int dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+            public String getLabel() { return label; }
+            public void setLabel(String label) { this.label = label; }
             public String getFajr() { return fajr; }
             public void setFajr(String fajr) { this.fajr = fajr; }
             public String getDhuhr() { return dhuhr; }

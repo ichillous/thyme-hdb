@@ -1,5 +1,7 @@
 package app.husna.HusnaMainBackend.controllers;
 
+import app.husna.HusnaMainBackend.constants.StateProvince;
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.event.Event;
 import app.husna.HusnaMainBackend.event.EventService;
 import org.springframework.data.domain.Page;
@@ -112,7 +114,7 @@ public class EventTestController {
             String venueName,
             String addressLine,
             String city,
-            String region,
+            StateProvince stateProvince,
             String postalCode,
             String timezone,
             Instant startAt,
@@ -121,7 +123,7 @@ public class EventTestController {
     ) {
         public EventService.CreateEvent toServiceDto() {
             return new EventService.CreateEvent(
-                    title, description, venueName, addressLine, city, region, postalCode, timezone, startAt, endAt, published
+                    title, description, venueName, addressLine, city, stateProvince, postalCode, timezone, startAt, endAt, published
             );
         }
     }
@@ -132,7 +134,7 @@ public class EventTestController {
             String venueName,
             String addressLine,
             String city,
-            String region,
+            StateProvince stateProvince,
             String postalCode,
             String timezone,
             Instant startAt,
@@ -141,7 +143,7 @@ public class EventTestController {
     ) {
         public EventService.UpdateEvent toServiceDto() {
             return new EventService.UpdateEvent(
-                    title, description, venueName, addressLine, city, region, postalCode, timezone, startAt, endAt, published
+                    title, description, venueName, addressLine, city, stateProvince, postalCode, timezone, startAt, endAt, published
             );
         }
     }

@@ -7,9 +7,12 @@
     <p class="muted">Update public details, services, and donation link.</p>
 
     <div class="alert error" th:if="${error != null}" th:text="${error}">Error</div>
+    <div class="alert warn" th:if="${notice == 'complete_profile'}">
+        Complete your organization profile before creating or publishing events.
+    </div>
 
     <form class="stack" method="post"
-          th:action="@{'/dashboard/org/profile/edit'(actorUserId=${actorUserId})}">
+          th:action="@{'/dashboard/org/profile/edit'}">
         <div class="grid two">
             <label>Display name
                 <input type="text" name="displayName" th:value="${form.displayName}" maxlength="160" required/>
@@ -42,20 +45,32 @@
 
         <fieldset class="stack">
             <legend>Location</legend>
-            <label>Street
-                <input type="text" name="street" th:value="${form.street}" maxlength="300"/>
+            <label>Address line 1
+                <input type="text" name="addressLine1" th:value="${form.addressLine1}" maxlength="300"/>
+            </label>
+            <label>Address line 2
+                <input type="text" name="addressLine2" th:value="${form.addressLine2}" maxlength="300"/>
             </label>
             <div class="grid three">
                 <label>City
                     <input type="text" name="city" th:value="${form.city}" maxlength="120"/>
                 </label>
-                <label>Region
-                    <input type="text" name="region" th:value="${form.region}" maxlength="120"/>
+                <label>State
+                    <select name="stateProvince">
+                        <option value="" th:selected="${form.stateProvince == null}">Select</option>
+                        <option th:each="st : ${states}"
+                                th:value="${st.name()}"
+                                th:text="${st.label()}"
+                                th:selected="${st.name() == form.stateProvince}">State</option>
+                    </select>
                 </label>
                 <label>Postal code
                     <input type="text" name="postalCode" th:value="${form.postalCode}" maxlength="40"/>
                 </label>
             </div>
+            <label>Country code
+                <input type="text" name="countryCode" th:value="${form.countryCode ?: 'US'}" maxlength="2"/>
+            </label>
         </fieldset>
 
         <div class="grid two">
@@ -105,6 +120,6 @@
         <button class="btn" type="submit">Save profile</button>
     </form>
 
-    <a class="link" th:href="@{'/dashboard/org'(actorUserId=${actorUserId})}">← Back to dashboard</a>
+    <a class="link" th:href="@{/dashboard/org}">← Back to dashboard</a>
 </section>
 </html>

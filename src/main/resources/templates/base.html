@@ -9,23 +9,45 @@
     <link rel="stylesheet" th:href="@{/css/app.css}"/>
 
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+    <script src="/js/htmx.min.js" defer></script>
+    <script>
+        (function(){
+            function loadFallback(){
+                if (window.htmx) return;
+                var script=document.createElement('script');
+                script.src="https://unpkg.com/htmx.org@1.9.12";
+                script.defer=true;
+                document.head.appendChild(script);
+            }
+            document.addEventListener('DOMContentLoaded', loadFallback, {once:true});
+        })();
+    </script>
 </head>
 <body class="app dark">
 <header class="nav">
-    <a class="brand" th:if="${param.actorUserId == null}" th:href="@{/}">Husna</a>
-    <a class="brand" th:if="${param.actorUserId != null}"
-       th:href="@{/(actorUserId=${param.actorUserId})}">Husna</a>
+    <a class="brand" th:href="@{/}">Husna</a>
     <nav class="links">
-        <a th:if="${param.actorUserId == null}" th:href="@{/home}">Home</a>
-        <a th:if="${param.actorUserId != null}"
-           th:href="@{/home(actorUserId=${param.actorUserId})}">Home</a>
-        <a th:href="@{/login}">Log in</a>
-        <a th:href="@{/signup}">Sign up</a>
-        <a th:if="${param.actorUserId != null}"
-           th:href="@{'/saved'(actorUserId=${param.actorUserId})}">Saved</a>
-        <a th:if="${param.actorUserId != null}"
-           th:href="@{'/dashboard/org'(actorUserId=${param.actorUserId})}">Org Dashboard</a>
+        <a th:href="@{/home}">Home</a>
+        <a th:if="${actorUserId == null}"
+           th:href="@{/login}"
+           data-modal-trigger
+           hx-get="@{/auth/login/form}"
+           hx-target="body"
+           hx-swap="beforeend"
+           hx-push-url="false"
+           hx-indicator="#hx-indicator">Log in</a>
+        <a th:if="${actorUserId == null}"
+           th:href="@{/signup}"
+           data-modal-trigger
+           hx-get="@{/auth/signup/form}"
+           hx-target="body"
+           hx-swap="beforeend"
+           hx-push-url="false"
+           hx-indicator="#hx-indicator">Sign up</a>
+        <a th:if="${actorUserId != null}"
+           th:href="@{/saved}">Saved</a>
+        <a th:if="${actorUserId != null}"
+           th:href="@{/dashboard/org}">Org Dashboard</a>
     </nav>
 
 </header>
@@ -39,5 +61,294 @@
 </footer>
 
 <div id="hx-indicator" class="indicator" aria-hidden="true">…</div>
+<div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+<script>
+(function () {
+    const overlaySelector = '[data-modal-overlay]';
+    const focusableSelector = "a[href],area[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";
+    let lastTrigger = null;
+    let activeOverlay = null;
+
+    function isVisible(el) {
+        return el.offsetParent !== null || (el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0);
+    }
+
+    function getFocusable(container) {
+        return Array.from(container.querySelectorAll(focusableSelector))
+            .filter(el => el.getAttribute('tabindex') !== '-1' && isVisible(el));
+    }
+
+    function trapKeydown(event) {
+        if (!activeOverlay) return;
+        if (event.key !== 'Tab') return;
+        const dialog = activeOverlay.querySelector('[data-modal-dialog]');
+        if (!dialog) return;
+        const focusables = getFocusable(dialog);
+        if (focusables.length === 0) {
+            event.preventDefault();
+            dialog.focus();
+            return;
+        }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const current = document.activeElement;
+        if (event.shiftKey) {
+            if (current === first || !dialog.contains(current)) {
+                event.preventDefault();
+                last.focus();
+            }
+        } else if (current === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    function focusDialog(dialog) {
+        const focusables = getFocusable(dialog);
+        if (focusables.length > 0) {
+            focusables[0].focus();
+        } else {
+            dialog.focus();
+        }
+    }
+
+    function rememberTrigger(event) {
+        const trigger = event.target.closest('[data-modal-trigger]');
+        if (trigger) {
+            lastTrigger = trigger;
+        }
+    }
+
+    function closeOverlay(overlay) {
+        if (!overlay || overlay.dataset.modalClosing === 'true') return;
+        overlay.dataset.modalClosing = 'true';
+        overlay.remove();
+    }
+
+    function handleCloseClick(event) {
+        const closer = event.target.closest('[data-modal-close]');
+        if (!closer) return;
+        event.preventDefault();
+        closeOverlay(closer.closest(overlaySelector));
+    }
+
+    function restoreFocus() {
+        if (lastTrigger && document.body.contains(lastTrigger)) {
+            lastTrigger.focus();
+        }
+        lastTrigger = null;
+    }
+
+    function activateOverlay(overlay) {
+        if (!overlay) return;
+        activeOverlay = overlay;
+        const dialog = overlay.querySelector('[data-modal-dialog]');
+        if (!dialog) return;
+        focusDialog(dialog);
+    }
+
+    function teardownOverlay(overlay) {
+        if (!overlay) return;
+        if (activeOverlay === overlay) {
+            activeOverlay = null;
+        }
+        if (!document.querySelector(overlaySelector)) {
+            restoreFocus();
+        }
+    }
+
+    document.addEventListener('click', rememberTrigger, true);
+    document.addEventListener('click', handleCloseClick);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && activeOverlay) {
+            event.preventDefault();
+            closeOverlay(activeOverlay);
+        } else if (activeOverlay) {
+            trapKeydown(event);
+        }
+    }, true);
+
+    const observer = new MutationObserver(function (mutations) {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                if (node.matches(overlaySelector)) {
+                    activateOverlay(node);
+                } else {
+                    const found = node.querySelector?.(overlaySelector);
+                    if (found) activateOverlay(found);
+                }
+            });
+            mutation.removedNodes.forEach(node => {
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                if (node.matches(overlaySelector)) {
+                    teardownOverlay(node);
+                } else {
+                    const found = node.querySelector?.(overlaySelector);
+                    if (found) teardownOverlay(found);
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, {childList: true, subtree: true});
+})();
+</script>
+<script>
+(function () {
+    const stack = document.getElementById('toast-stack');
+    if (!stack) return;
+    window.husna = window.husna || {};
+
+    function removeToast(node) {
+        if (!node || node.dataset.closing === 'true') return;
+        node.dataset.closing = 'true';
+        node.classList.add('leaving');
+        setTimeout(() => node.remove(), 250);
+    }
+
+    function buildToast(options) {
+        if (!options) return;
+        const opts = typeof options === 'string' ? {message: options} : options;
+        if (!opts.message) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + (opts.variant || 'info');
+        toast.setAttribute('role', opts.role || 'status');
+
+        const text = document.createElement('span');
+        text.textContent = opts.message;
+        toast.appendChild(text);
+
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.setAttribute('aria-label', 'Dismiss notification');
+        dismiss.textContent = '×';
+        dismiss.addEventListener('click', () => removeToast(toast));
+        toast.appendChild(dismiss);
+
+        stack.appendChild(toast);
+        const duration = typeof opts.duration === 'number' ? opts.duration : 4500;
+        setTimeout(() => removeToast(toast), duration);
+
+        while (stack.children.length > 3) {
+            removeToast(stack.firstElementChild);
+        }
+    }
+
+    window.husna.toast = function (message, variant) {
+        if (typeof message === 'object') {
+            return buildToast(message);
+        }
+        return buildToast({message, variant});
+    };
+
+    document.addEventListener('husna:toast', event => buildToast(event.detail));
+
+    document.body.addEventListener('htmx:afterSwap', event => {
+        const target = event.detail && event.detail.target;
+        if (!target) return;
+        const msg = target.dataset ? target.dataset.toastMessage : null;
+        if (!msg) return;
+        buildToast({
+            message: msg,
+            variant: target.dataset.toastVariant
+        });
+        target.removeAttribute('data-toast-message');
+        target.removeAttribute('data-toast-variant');
+    });
+})();
+(function () {
+    function renderSkeleton(type) {
+        switch (type) {
+            case 'table': {
+                let rows = '';
+                for (let i = 0; i < 4; i++) {
+                    rows += '<div class="skeleton-row"><span class="skeleton-line wide"></span><span class="skeleton-line short"></span></div>';
+                }
+                return '<div class="skeleton-shell skeleton-table" aria-hidden="true">' +
+                    '<div class="skeleton-row"><span class="skeleton-line half tall"></span><span class="skeleton-pill"></span></div>' +
+                    rows +
+                    '</div>';
+            }
+            case 'modal':
+                return '<div class="skeleton-shell skeleton-modal" aria-hidden="true">' +
+                    '<span class="skeleton-line wide tall"></span>' +
+                    '<span class="skeleton-line full"></span>' +
+                    '<span class="skeleton-line half"></span>' +
+                    '<span class="skeleton-line full"></span>' +
+                    '<span class="skeleton-line wide"></span>' +
+                    '</div>';
+            default:
+                return '<div class="skeleton-shell" aria-hidden="true">' +
+                    '<span class="skeleton-line wide tall"></span>' +
+                    '<span class="skeleton-line half"></span>' +
+                    '<span class="skeleton-line full"></span>' +
+                    '</div>';
+        }
+    }
+
+    function activateSkeleton(target) {
+        if (!target || !target.dataset || !target.dataset.skeleton) return;
+        if (target.dataset.skeletonActive === 'true') return;
+        target._skeletonOriginal = target.innerHTML;
+        target.dataset.skeletonActive = 'true';
+        target.classList.add('skeleton-host');
+        target.setAttribute('aria-busy', 'true');
+        target.innerHTML = renderSkeleton(target.dataset.skeleton);
+    }
+
+    function clearSkeleton(target, restore) {
+        if (!target || !target.dataset || target.dataset.skeletonActive !== 'true') return;
+        if (restore && typeof target._skeletonOriginal === 'string') {
+            target.innerHTML = target._skeletonOriginal;
+        }
+        target._skeletonOriginal = null;
+        delete target.dataset.skeletonActive;
+        target.classList.remove('skeleton-host');
+        target.removeAttribute('aria-busy');
+    }
+
+    document.body.addEventListener('htmx:beforeRequest', event => {
+        const target = event.detail && event.detail.target;
+        if (!target) return;
+        if (target.dataset && target.dataset.skeleton) {
+            activateSkeleton(target);
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', event => {
+        const target = event.detail && event.detail.target;
+        if (!target) return;
+        if (target.dataset && target.dataset.skeletonActive === 'true') {
+            clearSkeleton(target, false);
+        }
+    });
+
+    document.body.addEventListener('htmx:responseError', event => {
+        const target = event.detail && event.detail.target;
+        if (!target) return;
+        if (target.dataset && target.dataset.skeletonActive === 'true') {
+            clearSkeleton(target, true);
+        }
+    });
+})();
+</script>
+<script>
+(function(){
+    // Require explicit submit button for marked forms to avoid accidental submissions
+    document.addEventListener('submit', function(ev){
+        const form = ev.target;
+        if (!form || form.dataset.requireExplicitSubmit !== 'true') return;
+        const submitter = ev.submitter;
+        if (!submitter || (submitter.type !== 'submit' && submitter.tagName !== 'BUTTON')) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (window.husna && typeof window.husna.toast === 'function') {
+                window.husna.toast('Choose Publish or Save to submit', 'warn');
+            }
+        }
+    }, true);
+})();
+</script>
 </body>
 </html>

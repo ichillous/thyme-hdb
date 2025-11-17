@@ -4,6 +4,7 @@ import app.husna.HusnaMainBackend.constants.OrgType;
 import app.husna.HusnaMainBackend.constants.PrayerTimesMode;
 import app.husna.HusnaMainBackend.constants.RoleName;
 import app.husna.HusnaMainBackend.constants.Services;
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.event.Event;
 import app.husna.HusnaMainBackend.event.EventRepository;
 import app.husna.HusnaMainBackend.user.UserAccount;
@@ -45,12 +46,30 @@ public class ProfileService {
         return u.getRoles() != null && u.getRoles().contains(RoleName.ORG_ADMIN);
     }
 
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private boolean hasOrgContact(Profile profile) {
+        return hasText(profile.getContactEmail()) || hasText(profile.getContactPhone());
+    }
+
+    private boolean isProfileComplete(Profile profile) {
+        return hasText(profile.getDisplayName())
+                && hasText(profile.getAddressLine1())
+                && hasText(profile.getCity())
+                && profile.getStateProvince() != null
+                && hasText(profile.getPostalCode())
+                && hasOrgContact(profile);
+    }
+
     private Profile bootstrapProfile(UserAccount owner) {
         Profile p = Profile.builder()
                 .userId(owner.getUserId())
                 .displayName(owner.getUsername() != null ? owner.getUsername() : owner.username())
                 .publicProfile(isOrg(owner))         // orgs default public; general users default private
                 .orgType(isOrg(owner) ? OrgType.OTHER : OrgType.NONE)
+                .countryCode("US")
                 .prayerTimesMode(PrayerTimesMode.DISABLED)
                 .donationEnabled(false)
                 .build();
@@ -63,6 +82,18 @@ public class ProfileService {
 
     public Optional<Profile> findByUserId(String userId) {
         return profiles.findByUserId(userId);
+    }
+
+    public boolean isOrgProfileComplete(String actorUserId) {
+        UserAccount actor = users.getById(actorUserId);
+        Profile profile = getOrCreateFor(actor);
+        return isProfileComplete(profile);
+    }
+
+    public void requireOrgProfileComplete(String actorUserId) {
+        if (!isOrgProfileComplete(actorUserId)) {
+            throw new IllegalStateException("profile_incomplete");
+        }
     }
 
     public Page<Event> getSavedEvents(String actorUserId, boolean upcoming, Pageable pageable) {
@@ -117,10 +148,13 @@ public class ProfileService {
         if (!isOrg(owner)) throw new UnsupportedOperationException("not_an_org");
 
         Profile p = profiles.findByUserId(orgUserId)
-                .orElseThrow(() -> new IllegalArgumentException("profile_not_found"));
+                .orElseGet(() -> bootstrapProfile(owner));
+        if (!p.isPublicProfile()) {
+            throw new UnsupportedOperationException("profile_not_public");
+        }
 
         // org’s published events split by time (optional polish)
-        Page<Event> owned = events.findByOwnerOrgId(orgUserId, pageable);
+        Page<Event> owned = events.findByOwnerOrgIdAndPublishedTrue(orgUserId, pageable);
         Instant now = Instant.now();
         List<Event> upcoming = owned.getContent().stream().filter(e -> e.getStartAt().isAfter(now)).toList();
         List<Event> past     = owned.getContent().stream().filter(e -> !e.getStartAt().isAfter(now)).toList();
@@ -165,10 +199,12 @@ public class ProfileService {
 
         // ORG-only fields
         if (actorIsOrg) {
-            if (req.street() != null) p.setStreet(req.street());
+            if (req.addressLine1() != null) p.setAddressLine1(req.addressLine1());
+            if (req.addressLine2() != null) p.setAddressLine2(req.addressLine2());
             if (req.city() != null) p.setCity(req.city());
-            if (req.region() != null) p.setRegion(req.region());
+            if (req.stateProvince() != null) p.setStateProvince(req.stateProvince());
             if (req.postalCode() != null) p.setPostalCode(req.postalCode());
+            if (req.countryCode() != null) p.setCountryCode(req.countryCode().toUpperCase(Locale.ROOT));
 
             if (req.orgType() != null) p.setOrgType(req.orgType());
 
@@ -252,10 +288,12 @@ public class ProfileService {
             String logoUrl,
             String bannerUrl,
             // ORG-only
-            String street,
+            String addressLine1,
+            String addressLine2,
             String city,
-            String region,
+            StateProvince stateProvince,
             String postalCode,
+            String countryCode,
             OrgType orgType,
             Set<Services> services,
             String programsOffered,

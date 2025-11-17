@@ -1,6 +1,8 @@
 package app.husna.HusnaMainBackend.event;
 
 import app.husna.HusnaMainBackend.constants.RoleName;
+import app.husna.HusnaMainBackend.constants.StateProvince;
+import app.husna.HusnaMainBackend.profile.ProfileService;
 import app.husna.HusnaMainBackend.user.UserAccount;
 import app.husna.HusnaMainBackend.user.UserService;
 import jakarta.transaction.Transactional;
@@ -18,10 +20,12 @@ public class EventService {
 
     private final EventRepository events;
     private final UserService users;
+    private final ProfileService profiles;
 
-    public EventService(EventRepository events, UserService users) {
+    public EventService(EventRepository events, UserService users, ProfileService profiles) {
         this.events = events;
         this.users = users;
+        this.profiles = profiles;
     }
 
     // ========= CRUD (ORG-ONLY) =========
@@ -30,8 +34,12 @@ public class EventService {
     public Event createEvent(String actorUserId, CreateEvent req) {
         UserAccount actor = users.getById(actorUserId);
         assertOrg(actor);
+        profiles.requireOrgProfileComplete(actor.getUserId());
 
         validateTimes(req.startAt(), req.endAt());
+        if (req.stateProvince() == null) {
+            throw new IllegalArgumentException("state_required");
+        }
 
         Event e = Event.builder()
                 .ownerOrgId(actor.getUserId())
@@ -40,7 +48,7 @@ public class EventService {
                 .venueName(req.venueName())
                 .addressLine(req.addressLine())
                 .city(req.city())
-                .region(req.region())
+                .stateProvince(req.stateProvince())
                 .postalCode(req.postalCode())
                 .timezone(req.timezone())
                 .startAt(req.startAt())
@@ -53,6 +61,17 @@ public class EventService {
 
     public Event getEvent(String eventId) {
         return events.findById(eventId).orElseThrow(() -> new IllegalArgumentException("event_not_found"));
+    }
+
+    /**
+     * Fetch an event while ensuring the actor is an org admin and owns it. Useful for dashboard/edit forms.
+     */
+    public Event getOrgOwnedEvent(String actorUserId, String eventId) {
+        UserAccount actor = users.getById(actorUserId);
+        assertOrg(actor);
+        Event e = getEvent(eventId);
+        assertOwner(actor, e);
+        return e;
     }
 
     @Transactional
@@ -69,7 +88,7 @@ public class EventService {
         if (req.venueName() != null) e.setVenueName(req.venueName());
         if (req.addressLine() != null) e.setAddressLine(req.addressLine());
         if (req.city() != null) e.setCity(req.city());
-        if (req.region() != null) e.setRegion(req.region());
+        if (req.stateProvince() != null) e.setStateProvince(req.stateProvince());
         if (req.postalCode() != null) e.setPostalCode(req.postalCode());
         if (req.timezone() != null) e.setTimezone(req.timezone());
         if (req.startAt() != null) e.setStartAt(req.startAt());
@@ -163,7 +182,7 @@ public class EventService {
             String venueName,
             String addressLine,
             String city,
-            String region,
+            StateProvince stateProvince,
             String postalCode,
             String timezone,
             Instant startAt,
@@ -177,7 +196,7 @@ public class EventService {
             String venueName,
             String addressLine,
             String city,
-            String region,
+            StateProvince stateProvince,
             String postalCode,
             String timezone,
             Instant startAt,

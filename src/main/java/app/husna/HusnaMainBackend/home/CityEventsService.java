@@ -1,6 +1,7 @@
 // app/husna/HusnaMainBackend/home/CityEventsService.java
 package app.husna.HusnaMainBackend.home;
 
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.event.Event;
 import app.husna.HusnaMainBackend.event.EventRepository;
 import org.springframework.data.domain.*;
@@ -19,13 +20,13 @@ public class CityEventsService {
     public CityEventsService(EventRepository events) { this.events = events; }
 
     public Page<Event> searchCityEvents(String city,
-                                        String region,
+                                        StateProvince state,
                                         String q,
                                         DateFilter dateFilter,
                                         SortKey sortKey,
                                         int page) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), 20, sort(sortKey));
-        Specification<Event> spec = spec(city, region, q, dateFilter);
+        Specification<Event> spec = spec(city, state, q, dateFilter);
         return events.findAll(spec, pageable);
     }
 
@@ -35,9 +36,8 @@ public class CityEventsService {
                 : Sort.by(Sort.Order.desc("startAt")); // NEWEST default
     }
 
-    private Specification<Event> spec(String city, String region, String q, DateFilter df) {
+    private Specification<Event> spec(String city, StateProvince state, String q, DateFilter df) {
         final String cityLc = city == null ? "" : city.toLowerCase(Locale.ROOT);
-        final String regionLc = region == null ? null : region.toLowerCase(Locale.ROOT);
         final String like = q == null || q.isBlank() ? null : "%" + q.toLowerCase(Locale.ROOT) + "%";
 
         // date window
@@ -52,8 +52,8 @@ public class CityEventsService {
             List<Predicate> p = new ArrayList<>();
             p.add(cb.isTrue(root.get("published")));
             p.add(cb.equal(cb.lower(root.get("city")), cityLc));
-            if (regionLc != null && !regionLc.isBlank()) {
-                p.add(cb.equal(cb.lower(root.get("region")), regionLc));
+            if (state != null) {
+                p.add(cb.equal(root.get("stateProvince"), state));
             }
             // upcoming-only behavior if using a date window; ALL = no lower bound
             if (end != null) {

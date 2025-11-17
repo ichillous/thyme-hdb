@@ -1,12 +1,16 @@
 package app.husna.HusnaMainBackend.event;
 
+import app.husna.HusnaMainBackend.constants.StateProvince;
 import app.husna.HusnaMainBackend.user.UserAccount;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -47,8 +51,9 @@ public class Event {
     @Column(name = "city", length = 120)
     private String city;
 
-    @Column(name = "region", length = 120)
-    private String region;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "state_province", length = 2)
+    private StateProvince stateProvince;
 
     @Column(name = "postal_code", length = 40)
     private String postalCode;
@@ -88,5 +93,26 @@ public class Event {
         if (eventId == null || eventId.isBlank()) {
             eventId = UUID.randomUUID().toString();
         }
+    }
+
+    @Transient
+    public ZoneId getResolvedZone() {
+        if (timezone != null && !timezone.isBlank()) {
+            try {
+                return ZoneId.of(timezone);
+            } catch (DateTimeException ignored) {
+            }
+        }
+        return ZoneId.of("UTC");
+    }
+
+    @Transient
+    public ZonedDateTime getStartAtZoned() {
+        return startAt == null ? null : ZonedDateTime.ofInstant(startAt, getResolvedZone());
+    }
+
+    @Transient
+    public ZonedDateTime getEndAtZoned() {
+        return endAt == null ? null : ZonedDateTime.ofInstant(endAt, getResolvedZone());
     }
 }
